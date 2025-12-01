@@ -1,22 +1,31 @@
 module Polyhedron
 
-using LinearAlgebra, DelimitedFiles, JuMP, NEOSServer
+using LinearAlgebra, DelimitedFiles, JuMP, NEOSServer, Polyhedra, CDDLib
 
-struct Poly
-    lin_ineq::Matrix
-    vertices::Vector
+
+# a cddlib retorna os vertices em um vetor, mas para as operações de plotar e calcular trajetórias 
+# é melhor lidar com os vertices sendo um vetor de tuplas, em que cada tupla é uma cordenada no espaço de estados
+struct Vertices{T <: Tuple} 
+    points::Vector{T}
 end
 
-# struct Poly 
-#     lin_ineq::Matrix
-#     vertices = calver(lin_ineq, ones(size(lin_ineq, 1)))
-# end
+Base.getindex(v::Vertices, i::Int) = v.points[i]
+Base.length(v::Vertices) = length(v.points)
+Base.iterate(v::Vertices, state=1) = iterate(v.points, state)
+
+# recebe como parâmetro um iterador de vector 
+# iterador de vetor de vector é o que a vrep retorna ex: points(vrep(polyhedron(h_rep_F, CDDLib.Library()))) 
+function vertices_tuple(vet, n)
+    chunks = Iterators.partition(vet, n)
+    
+    return [Tuple(chunk) for chunk in chunks if length(chunk) == n]
+end
 
 function calver(G, w)
     vertex = Set{Tuple{Float64, Float64}}() 
     
     n_l = size(G, 1)
-
+    
     # Loop through every unique pair of lines
     for i in 1 : n_l - 1
         for j in i + 1 : n_l # Start from i+1 to avoid self-intersection
@@ -37,7 +46,6 @@ function calver(G, w)
 
             catch e
                 # This is expected for parallel lines, so no need to print unless debugging
-                # println("Rows $i and $j: singular matrix, skipping")
                 print(e)
 
             end
@@ -48,6 +56,7 @@ function calver(G, w)
     P = Poly(G, reorderpoints(vertex))
     return P
 end
+
 
 
 # otimizar essa funcao (pense em pdroduto matricial)
@@ -63,12 +72,6 @@ function satisfact_all(G, x)
     end
     return true
 end
-
-# function satisfact_all(G, x)
-#     tolerance = 1e-4 
-
-#     return G*x > ones(size(G)[1]) + tolerance 
-# end
 
 
 
@@ -86,51 +89,11 @@ function reorderpoints(points)
     cy = sum(p[2] for p in pts)/length(pts)
 
     vet_in_order = sort(pts, by = p -> atan(p[2] - cy, p[1] - cx)) # função anonima
-    
-    # sum 
-
-    # soma_x = 0
-    # soma_y = 0
-    # for p in points
-    #   soma_x += p[1]
-    #   soma_y += p[2]
-    # end
-  
-    # soma_x /= length(points)
-    # soma_y /= length(points)
-
-    # c = (soma_x , soma_y)
-
-
-    # for i in range(1, length(points) - 1)
-
-    #     menor = 2*pi # upper bound
-    #     next_pt = Tuple{Float64, Float64}
-    #     for p in points
-    #       a = [p[1] - c[1]; p[2] - c[2]]
-    #       b = vet_in_order[i] #[vet_in_order[i][1], vet_in_order[i][2]]
-    #       d = acos(dot(a, b)/(norm(a)*norm(b)))
-          
-    #       if d < menor
-    #           menor = d
-    #           next_pt = p
-    #       end
-    #     end
-
-    #     pop!(points, next_pt)
-
-    #     push!(vet_in_order, next_pt)
-
-    # end
-
-    # push!(vet_in_order, pop!(points))
-
-
-
     return vet_in_order
 end 
 
-#conjunto de vetores igualmente espaçados 
+# cria um conjunto de vetores igualmente espaçados
+# função auxiliar para o enl(.) dos problemas de otimização bilineares
 function vet_eq_spc(n)
     angle = 2*pi/n
 
@@ -140,28 +103,45 @@ function vet_eq_spc(n)
     
     vet_array = Array{Vector{Float64}}(undef, n)
     
+    # por padrão iniciasse com um vetor unitário na direção do eixo y, e vai rotacionando ele  
     vet_array[1] = [0, 1]
 
     for i in range(2, n)
         vet_array[i] = m_rot*vet_array[i-1] 
     end
-
     return vet_array
 
 end
 
-function trajectory(x0, G, passos)
+# plota a tragetória de sistemas descritos por x(k+1) = A*x(k)
+function trajectory(x0, A, passos)
     for i in range(2, passos)
         try
-            x0 = hcat(x0, G*x0[:, i-1])    
+            x0 = hcat(x0, A*x0[:, i-1])    
         catch e
             print(e)
         end
         
     end
-
     return x0   
 end
+
+# plota a tragetória para sistemas com atraso descritos por x(k+1) = A*x(k) + A*X(k-d) 
+# x0 é um vetor com todos as condições iniciais de [x(0), x(-1), ..., x(-d)]
+function trajectory_delay(x0, A, Ad, passos, d)
+    for i in 1:passos
+        try 
+
+            push!(x0, Tuple(A*collect(x0[d+i]) + Ad*collect(x0[i])))
+        catch e
+            print(e)
+        end
+
+    end
+
+    return x0[d+1:end]
+end
+
 
 # The Linear Constrained Regulation Problem
 # verifica se um certo poliedro X é invariante
@@ -194,9 +174,6 @@ function is_pinvariant(A, B, C, U, X; SOF = false, d = 0)
 
     @objective(model, Min, func_obj)
 
-    # tentando encontrar um L, caso bilinear
-
-
     if SOF # realimentação de saida 
         @constraint(model, contractiave_pi0, H*X == X*(A + B*K*C) ) 
         @constraint(model, u_included0, M*X == U*K*C )
@@ -217,10 +194,13 @@ function is_pinvariant(A, B, C, U, X; SOF = false, d = 0)
 
     print(termination_status(model))
 
+    # retorna o resultado da otimização, de forma que se lambda > 1 -> o poliedro não é PI
     return lambda
 
 end
 
+# Caso bilinear
+# procuramos o maior poliedro dentro de X, que seja PI
 function finding_L_pinvariant(A, B, C, U, X; SOF = false, ll = 6, t = 8, pond = 0.02, d = 0)
     model = Model() do
         return NEOSServer.Optimizer(; email = "wallace.lopes.162@ufrn.edu.br", solver = "Knitro")
@@ -295,10 +275,15 @@ function finding_L_pinvariant(A, B, C, U, X; SOF = false, ll = 6, t = 8, pond = 
 
     print(termination_status(model))
 
-    return calver(L, xl)
+    hrep_L = hrep(L, xl)
+
+    # retorna um poliedro do tipo polyhedron da biblioteca Polyhedra (útil para transitar entre as hrep e vrep)
+    return polyhedron(hrep_L, CDDLib.Library())
 end
 
-function is_pinvariant_delay_simetric(A, Ad, F; d=0)
+# Verifica se o poliedro F é PI, levando em consideração um atraso de tamanho d
+# utilizasse o modelo transformado de x(k+1) = A*x(k) + Ad*x(k-d)
+function is_pinvariant_delay_simetric(A, Ad, F; d=0) # falta o caso não simétrico (utilizar uma flag)
     model = Model() do
         return NEOSServer.Optimizer(; email = "wallace.lopes.162@ufrn.edu.br", solver = "Knitro")
     end
@@ -336,9 +321,12 @@ function is_pinvariant_delay_simetric(A, Ad, F; d=0)
 
     print(termination_status(model))
 
+    # retorna um dicionário com as matrizes K, H, L
     return result
 end
 
+# funções auxiliares para gerar a matriz de condições iniciais admissiveis
+# futuramente mudar o aproach de matriz de matrizes
 function extended_space_matrix_A(A, Ad, d)
     n = size(A, 1)
 
@@ -399,7 +387,47 @@ function cond_iniciais_adm(ext_F, ext_A, d)
     for i in range(2, d+1)
         cond_iniciais_matrix[i] = ext_F*ext_A^(i-1)
     end
+
+    
+
     return cond_iniciais_matrix
+end
+
+function mat_cond_iniciais_adm(A, Ad, F, d; symetric=true)
+  ext_A = Polyhedron.extended_space_matrix_A(A, Ad, d)
+  ext_F = Polyhedron.extended_space_matrix_F(F, d)
+  cond_iniciais_adm = Polyhedron.cond_iniciais_adm(ext_F, ext_A, d)
+  m, n = size(cond_iniciais_adm)#mxn
+  p, q = size(cond_iniciais_adm[1])#pxq
+  r, s = size(cond_iniciais_adm[1][1])#rxs
+
+  cia_final = cond_iniciais_adm[1, 1][1, 1]
+  temp = cond_iniciais_adm[1, 1][1, 1]
+
+  for i in 1:m
+    for j in 1:n
+      for k in 1:p
+        for l in 1:q
+          if l == 1
+            temp = cond_iniciais_adm[i, j][k, l]
+          else
+            temp = hcat(temp, cond_iniciais_adm[i, j][k, l])
+          end
+        end
+        if i == j == k == 1
+          cia_final = temp
+        else
+          cia_final = vcat(cia_final, temp)
+        end
+      end
+    end
+  end
+  if symetric
+    return vcat(cia_final, -cia_final)
+  else
+    return cia_final
+  end
+  
 end
 
 end

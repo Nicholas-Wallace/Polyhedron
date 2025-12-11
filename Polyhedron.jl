@@ -1,6 +1,6 @@
 module Polyhedron
 
-using LinearAlgebra, DelimitedFiles, JuMP, NEOSServer, Polyhedra, CDDLib
+using LinearAlgebra, DelimitedFiles, JuMP, NEOSServer, Polyhedra, CDDLib, Base.Iterators
 
 
 # a cddlib retorna os vertices em um vetor, mas para as operações de plotar e calcular trajetórias 
@@ -430,5 +430,57 @@ function mat_cond_iniciais_adm(A, Ad, F, d; symetric=true)
   
 end
 
+#TALVEZ DE PRA USAR NO LUGAR DA EXTENDEDA_MATRIX ANTIGA
+function ExtendedA_Matrix(A, Ad, d; dm=d)
+    n = size(A, 1)
+    N = n * (dm + 1)
+
+    line1 = zeros(n, N-n)
+    line1[:, (d-1) * n + 1 : d * n] = Ad
+    line1 = hcat(A, line1)
+
+    identity = Float64.(I(n*dm))
+    bottom_zero = zeros(n*dm, n)
+
+    return vcat(line1, hcat(identity, bottom_zero))
 end
 
+function ExtendedA_Vector(A, Ad, dm)
+    n = size(A, 1)
+    N = n * (dm + 1)
+    x = [zeros(n, N) for _ in 1:dm]
+    
+    for i in 1:dm
+        x[i] = ExtendedA_Matrix(A, Ad, i, dm)
+    end
+
+    return x
+end
+
+function AllPossibleComb(j, dm)
+    ranges = [1:dm for _ in 1:j]
+    return collect(Iterators.product(ranges...))
+end
+
+# FALTA TERMINAR AINDA
+function VariantDelayAdmisInit(A, Ad, F, dm)
+
+    A_array = ExtendedA_Vector(A, Ad, dm)
+    extendedMatrix = []
+    push!(extendedMatrix, F)
+
+    for i in 1:dm
+        indexes = AllPossibleComb(i, dm)
+        for index in indexes
+            for elem in index
+                product *= A_array[elem]
+            end
+            !push(extendedMatrix, F * product)
+        end
+    end
+
+    extendedMatrix = reduce(vcat, extendedMatrix)
+    return extendedMatrix
+end
+
+end

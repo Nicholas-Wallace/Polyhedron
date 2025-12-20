@@ -1,6 +1,6 @@
 module Polyhedron
 
-using LinearAlgebra, DelimitedFiles, JuMP, NEOSServer, Polyhedra, CDDLib, Base.Iterators
+using LinearAlgebra, DelimitedFiles, JuMP, NEOSServer, Polyhedra, CDDLib, Base.Iterators, HiGHS
 
 
 # a cddlib retorna os vertices em um vetor, mas para as operações de plotar e calcular trajetórias 
@@ -327,59 +327,6 @@ end
 
 # funções auxiliares para gerar a matriz de condições iniciais admissiveis
 # futuramente mudar o aproach de matriz de matrizes
-function extended_space_matrix_A(A, Ad, d)
-    n = size(A, 1)
-
-    line1 = Matrix{Matrix{Float64}}(undef, 1, d)
-    line1[1] = A
-
-    for i in range(2, d)
-        line1[i] = zeros(n,n) 
-    end
-
-    identity_dxd = Matrix{Matrix{Float64}}(undef, d, d)
-
-    for i in range(1, d)
-        for j in range(1, d)
-            if i == j
-                identity_dxd[i,j] = I(n)
-
-            else
-                identity_dxd[i,j] = zeros(n, n)
-            end
-        end    
-    end
-
-    es_matrix_A = vcat(line1, identity_dxd)
-
-    columnd = Matrix{Matrix{Float64}}(undef, d+1, 1)
-    columnd[1] = Ad
-    for i in range(2, d+1)
-        columnd[i] = zeros(n,n) 
-    end
-
-    es_matrix_A = hcat(es_matrix_A, columnd)
-
-    return es_matrix_A
-
-end
-
-function extended_space_matrix_F(F, d)
-    es_matrix_F = Matrix{Matrix{Float64}}(undef, d+1, d+1)
-
-    n = size(F, 1)
-
-    for i in range(1, d+1)
-        for j in range(1, d+1)
-            if i == j
-                es_matrix_F[i, j] = F
-            else
-                es_matrix_F[i, j] = zeros(n, n)
-            end
-        end
-    end
-    return es_matrix_F
-end
 
 function cond_iniciais_adm(ext_F, ext_A, d)
     cond_iniciais_matrix = Matrix{Matrix{Matrix{Float64}}}(undef, d+1, 1)
@@ -394,8 +341,8 @@ function cond_iniciais_adm(ext_F, ext_A, d)
 end
 
 function mat_cond_iniciais_adm(A, Ad, F, d; symetric=true)
-  ext_A = Polyhedron.extended_space_matrix_A(A, Ad, d)
-  ext_F = Polyhedron.extended_space_matrix_F(F, d)
+  ext_A = Polyhedron.extended_A(A, Ad, d)
+  ext_F = Polyhedron.extended_F(F, d)
   cond_iniciais_adm = Polyhedron.cond_iniciais_adm(ext_F, ext_A, d)
   m, n = size(cond_iniciais_adm)#mxn
   p, q = size(cond_iniciais_adm[1])#pxq
@@ -430,57 +377,72 @@ function mat_cond_iniciais_adm(A, Ad, F, d; symetric=true)
   
 end
 
-#TALVEZ DE PRA USAR NO LUGAR DA EXTENDEDA_MATRIX ANTIGA
-function ExtendedA_Matrix(A, Ad, d; dm=d)
+# Cria lista de matrizes F e forma a matriz diagonal extended_F
+function extended_F(F, d)
+    blocks = [F for _ in 1:(dm+1)]
+    # Concatena na diagonal (concatena tanto verticalmente quanto horizontalmente)
+    # Isso gera a matriz diagonal, os zeros são colocados automaticamente
+    return cat(blocks..., dims=(1, 2))
+end
+
+function extended_A(A, Ad, d; dm=d)
     n = size(A, 1)
     N = n * (dm + 1)
+    id = (d-1) * n + 1 : d * n
 
-    line1 = zeros(n, N-n)
-    line1[:, (d-1) * n + 1 : d * n] = Ad
-    line1 = hcat(A, line1)
+    row1 = zeros(n, N-n)
+    row1[:, id] = Ad
+    row1 = hcat(A, row1)
 
     identity = Float64.(I(n*dm))
     bottom_zero = zeros(n*dm, n)
 
-    return vcat(line1, hcat(identity, bottom_zero))
+    return vcat(row1, hcat(identity, bottom_zero))
 end
 
-function ExtendedA_Vector(A, Ad, dm)
+function extended_A_Vector(A, Ad, dm)
     n = size(A, 1)
     N = n * (dm + 1)
     x = [zeros(n, N) for _ in 1:dm]
     
     for i in 1:dm
-        x[i] = ExtendedA_Matrix(A, Ad, i, dm)
+        x[i] = extended_A(A, Ad, i, dm)
     end
 
     return x
 end
 
-function AllPossibleComb(j, dm)
+function allPossibleComb(j, dm)
+    # Cria lista de ranges 1:dm
     ranges = [1:dm for _ in 1:j]
+
+    # Retorna o produto cartesiano desses ranges numa matriz
     return collect(Iterators.product(ranges...))
 end
 
 # FALTA TERMINAR AINDA
-function VariantDelayAdmisInit(A, Ad, F, dm)
+function admissable_initCond(A, Ad, F, dm; symetric=true, fixed_delay=false)
 
-    A_array = ExtendedA_Vector(A, Ad, dm)
-    extendedMatrix = []
-    push!(extendedMatrix, F)
+    ext_F = extended_F(F, dm)
+    A_array = extended_A_Vector(A, Ad, dm)
+    extendedMatrix = [ext_F]
+    push!(extendedMatrix, ext_F)
+
+    n = size(A, 1)
+    N = n * (dm + 1)
 
     for i in 1:dm
-        indexes = AllPossibleComb(i, dm)
+        indexes = allPossibleComb(i, dm)
         for index in indexes
+            product = Matrix{Float64}(I, N, N)
             for elem in index
-                product *= A_array[elem]
+                product = A_array[elem] * product
             end
-            !push(extendedMatrix, F * product)
+            push!(extendedMatrix, ext_F * product)
         end
     end
 
-    extendedMatrix = reduce(vcat, extendedMatrix)
-    return extendedMatrix
+    return reduce(vcat, extendedMatrix)
 end
 
 end

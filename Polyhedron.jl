@@ -1,6 +1,6 @@
 module Polyhedron
 
-using LinearAlgebra, DelimitedFiles, JuMP, NEOSServer, Polyhedra, CDDLib, Base.Iterators, HiGHS
+using LinearAlgebra, DelimitedFiles, JuMP, NEOSServer, Polyhedra, CDDLib, Base.Iterators
 
 
 # a cddlib retorna os vertices em um vetor, mas para as operações de plotar e calcular trajetórias 
@@ -377,6 +377,26 @@ function mat_cond_iniciais_adm(A, Ad, F, d; symetric=true)
   
 end
 
+function elimred(G, ro)
+    h = hrep(G, ro)
+    p = polyhedron(h, CDDLIB.Library())
+    removehredundancy!(p)
+    h_clean = hrep(p)
+
+    n_h = nhalfspaces(h_clean)
+    dim = size(G, 2)
+
+    Gn = Matrix{Float64}(undef, n_h, dim)
+    ron = Vector{Float64}(undef, n_h)
+
+    for (i, half_spaces) in enumerate(halfspaces(h_clean))
+        Gn[i, :] = half_space.a
+        ron[i] = half_space.β
+    end
+
+    return Gn, ron
+end
+
 # Cria lista de matrizes F e forma a matriz diagonal extended_F
 function extended_F(F, d)
     blocks = [F for _ in 1:(dm+1)]
@@ -420,13 +440,15 @@ function allPossibleComb(j, dm)
     return collect(Iterators.product(ranges...))
 end
 
-# FALTA TERMINAR AINDA
-function admissable_initCond(A, Ad, F, dm; symetric=true, fixed_delay=false)
-
+# ASSUME QUE W É VETOR DE 1s
+function admissable_initCond(A, Ad, F, dm, w; symetric=false, fixed_delay=false)
     ext_F = extended_F(F, dm)
+    ext_w = repeat(w, dm + 1)
+
     A_array = extended_A_Vector(A, Ad, dm)
-    extendedMatrix = [ext_F]
-    push!(extendedMatrix, ext_F)
+
+    init_cond_F = ext_F
+    init_cond_w = ext_w
 
     n = size(A, 1)
     N = n * (dm + 1)
@@ -438,11 +460,18 @@ function admissable_initCond(A, Ad, F, dm; symetric=true, fixed_delay=false)
             for elem in index
                 product = A_array[elem] * product
             end
-            push!(extendedMatrix, ext_F * product)
+            init_cond_F = vcat(init_cond_F, ext_F * product)
+            init_cond_w = vcat(init_cond_w, ext_w)
         end
+
+        init_cond_F, init_cond_w = elimred(init_cond_F, init_cond_w)
     end
 
-    return reduce(vcat, extendedMatrix)
+    if symetric
+        return vcat(init_cond_F, -init_cond_F)
+    end
+
+    return init_cond_F
 end
 
 end

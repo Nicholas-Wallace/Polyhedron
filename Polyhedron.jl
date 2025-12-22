@@ -1,4 +1,4 @@
-module Polyhedron
+module Poly
 
 using LinearAlgebra, DelimitedFiles, JuMP, NEOSServer, Polyhedra, CDDLib, Base.Iterators
 
@@ -57,8 +57,6 @@ function calver(G, w)
     return P
 end
 
-
-
 # otimizar essa funcao (pense em pdroduto matricial)
 
 function satisfact_all(G, x)
@@ -72,8 +70,6 @@ function satisfact_all(G, x)
     end
     return true
 end
-
-
 
 function reorderpoints(points)
     vet_in_order = Vector{Tuple{Float64, Float64}}() 
@@ -131,7 +127,6 @@ end
 function trajectory_delay(x0, A, Ad, passos, d)
     for i in 1:passos
         try 
-
             push!(x0, Tuple(A*collect(x0[d+i]) + Ad*collect(x0[i])))
         catch e
             print(e)
@@ -283,7 +278,8 @@ end
 
 # Verifica se o poliedro F é PI, levando em consideração um atraso de tamanho d
 # utilizasse o modelo transformado de x(k+1) = A*x(k) + Ad*x(k-d)
-function is_pinvariant_delay_simetric(A, Ad, F; d=0) # falta o caso não simétrico (utilizar uma flag)
+# Caso não simétrico e simétrico implementado com flag
+function is_pinvariant_delay(A, Ad, F; d=0, symetric=true)
     model = Model() do
         return NEOSServer.Optimizer(; email = "wallace.lopes.162@ufrn.edu.br", solver = "Knitro")
     end
@@ -295,33 +291,59 @@ function is_pinvariant_delay_simetric(A, Ad, F; d=0) # falta o caso não simétr
 
     w = ones(f)
 
-    @variable(model, K[1:n, 1:n])
-    @variable(model, 0 <= H1[1:f, 1:f])
-    @variable(model, 0 <= H2[1:f, 1:f])
-    @variable(model, 0 <= L1[1:f, 1:f])
-    @variable(model, 0 <= L2[1:f, 1:f])
-    @variable(model, 0 <= M1[1:f, 1:f])
-    @variable(model, 0 <= M2[1:f, 1:f])
-    @variable(model, 0 <= N1[1:f, 1:f])
-    @variable(model, 0 <= N2[1:f, 1:f])
+    if symetric
+        @variable(model, K[1:n, 1:n])
+        @variable(model, 0 <= H1[1:f, 1:f])
+        @variable(model, 0 <= H2[1:f, 1:f])
+        @variable(model, 0 <= L1[1:f, 1:f])
+        @variable(model, 0 <= L2[1:f, 1:f])
+        @variable(model, 0 <= M1[1:f, 1:f])
+        @variable(model, 0 <= M2[1:f, 1:f])
+        @variable(model, 0 <= N1[1:f, 1:f])
+        @variable(model, 0 <= N2[1:f, 1:f])
 
-    @constraint(model, (H1-H2)*F == F*(A + K))
-    @constraint(model, (L1-L2)*F == F*(Ad - K))
-    @constraint(model, (M1-M2)*F == -F*K*(A - I(n)))
-    @constraint(model, (N1-N2)*F == -F*K*Ad)
-    @constraint(model, ((H1 + H2) + (L1 + L2) + d*((M1 + M2) + (N1 + N2)))*w <= w)
+        @constraint(model, (H1-H2)*F == F*(A + K))
+        @constraint(model, (L1-L2)*F == F*(Ad - K))
+        @constraint(model, (M1-M2)*F == -F*K*(A - I(n)))
+        @constraint(model, (N1-N2)*F == -F*K*Ad)
+        @constraint(model, ((H1 + H2) + (L1 + L2) + d*((M1 + M2) + (N1 + N2)))*w <= w)
+
+        optimize!(model)
+
+        K = value.(K)
+        H = value.(H1) + value.(H2)
+        L = value.(L1) + value.(L2)
+
+        result = Dict("K" => K, "H" => H, "L" => L)
+
+        print(termination_status(model))
+
+        # retorna um dicionário com as matrizes K, H, L
+        return result
+    end
+    
+    @variable(model, K[1:n, 1:n])
+    @variable(model, 0 <= H[1:f, 1:f])
+    @variable(model, 0 <= L[1:f, 1:f])
+    @variable(model, 0 <= M[1:f, 1:f])
+    @variable(model, 0 <= N[1:f, 1:f])
+
+    @constraint(model, H*F == F*(A + K))
+    @constraint(model, L*F == F*(Ad - K))
+    @constraint(model, M*F == -F*K*(A - I(n)))
+    @constraint(model, N*F == -F*K*Ad)
+    @constraint(model, (H + L + d*(M + N))*w <= w)
 
     optimize!(model)
 
     K = value.(K)
-    H = value.(H1) + value.(H2)
-    L = value.(L1) + value.(L2)
+    H = value.(H)
+    L = value.(L)
 
     result = Dict("K" => K, "H" => H, "L" => L)
 
     print(termination_status(model))
 
-    # retorna um dicionário com as matrizes K, H, L
     return result
 end
 
@@ -379,7 +401,7 @@ end
 
 function elimred(G, ro)
     h = hrep(G, ro)
-    p = polyhedron(h, CDDLIB.Library())
+    p = polyhedron(h, CDDLib.Library())
     removehredundancy!(p)
     h_clean = hrep(p)
 
@@ -389,7 +411,7 @@ function elimred(G, ro)
     Gn = Matrix{Float64}(undef, n_h, dim)
     ron = Vector{Float64}(undef, n_h)
 
-    for (i, half_spaces) in enumerate(halfspaces(h_clean))
+    for (i, half_space) in enumerate(halfspaces(h_clean))
         Gn[i, :] = half_space.a
         ron[i] = half_space.β
     end
@@ -399,7 +421,7 @@ end
 
 # Cria lista de matrizes F e forma a matriz diagonal extended_F
 function extended_F(F, d)
-    blocks = [F for _ in 1:(dm+1)]
+    blocks = [F for _ in 1:(d+1)]
     # Concatena na diagonal (concatena tanto verticalmente quanto horizontalmente)
     # Isso gera a matriz diagonal, os zeros são colocados automaticamente
     return cat(blocks..., dims=(1, 2))
@@ -426,7 +448,7 @@ function extended_A_Vector(A, Ad, dm)
     x = [zeros(n, N) for _ in 1:dm]
     
     for i in 1:dm
-        x[i] = extended_A(A, Ad, i, dm)
+        x[i] = extended_A(A, Ad, i; dm=dm)
     end
 
     return x

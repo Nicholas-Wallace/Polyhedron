@@ -1,6 +1,6 @@
 module Poly
 
-using LinearAlgebra, DelimitedFiles, JuMP, NEOSServer, Polyhedra, CDDLib, Base.Iterators
+using LinearAlgebra, DelimitedFiles, JuMP, HiGHS, NEOSServer, Polyhedra, CDDLib, Base.Iterators
 
 
 # a cddlib retorna os vertices em um vetor, mas para as operações de plotar e calcular trajetórias 
@@ -12,6 +12,50 @@ end
 Base.getindex(v::Vertices, i::Int) = v.points[i]
 Base.length(v::Vertices) = length(v.points)
 Base.iterate(v::Vertices, state=1) = iterate(v.points, state)
+
+function get_extreme_vertices(A, b, num_pontos=5)
+    n_vars = size(A, 2)
+    model = Model(HiGHS.Optimizer)
+    set_silent(model)
+    @variable(model, x[1:n_vars])
+    @constraint(model, A * x .<= b)
+    
+    lista_vertices = Vector{Vector{Float64}}()
+    
+    for i in 1:num_pontos
+        c = randn(n_vars)
+        @objective(model, Max, sum(c[j] * x[j] for j in 1:n_vars))
+        
+        optimize!(model)
+        
+        if termination_status(model) == MOI.OPTIMAL
+            push!(lista_vertices, value.(x))
+        end
+    end
+    return lista_vertices
+end
+
+function get_vertices(F, w, init_cond, init_cond_w, index)
+    hrep_ic = hrep(init_cond, init_cond_w)
+    P = vrep(polyhedron(hrep_ic, CDDLib.Library()))
+
+    ext_vertices = collect(points(P))
+    ext_vertices_tuple = Tuple{Float64, Float64}[]
+
+    for i in 1:2:(length(vertices[index]))
+        push!(ext_vertices_tuple, (vertices[index][i], vertices[index][i+1]))
+    end
+
+    h_rep_F = hrep(vcat(F, -F), vcat(w, w))
+    iter = points(vrep(polyhedron(h_rep_F, CDDLib.Library())))
+
+    vertices_F = []
+    for vet in iter
+        push!(vertices_F, Tuple(vet))
+    end
+
+    return ext_vertices_tuple, vertices_F
+end
 
 # recebe como parâmetro um iterador de vector 
 # iterador de vetor de vector é o que a vrep retorna ex: points(vrep(polyhedron(h_rep_F, CDDLib.Library()))) 
@@ -122,19 +166,29 @@ function trajectory(x0, A, passos)
     return x0   
 end
 
-# plota a tragetória para sistemas com atraso descritos por x(k+1) = A*x(k) + A*X(k-d) 
+# plota a tragetória para sistemas com atraso descritos por x(k+1) = A*x(k) + A*x(k-d) (delay fixo)
+#                                                    ou por x(k+1) = A*x(k) + A*x(k-d(k)) (delay variante)
 # x0 é um vetor com todos as condições iniciais de [x(0), x(-1), ..., x(-d)]
-function trajectory_delay(x0, A, Ad, passos, d)
-    for i in 1:passos
-        try 
-            push!(x0, Tuple(A*collect(x0[d+i]) + Ad*collect(x0[i])))
-        catch e
-            print(e)
-        end
+function trajectory_delay(x0, A, Ad, passos, d; varying=false, reverse=true)
+    # Como o vetor vem na forma [x[k]...x[k-d]] para plotar a trajetória
+    # é Melhor que esteja na ordem cronológica [x[k-d]...x[k]]
+    x0_traj = copy(x0)
 
+    if reverse
+        reverse!(x0_traj)
+    end
+    
+    if varying == false
+        for i in 1:passos
+            try 
+                push!(x0_traj, Tuple(A*collect(x0_traj[d+i]) + Ad*collect(x0_traj[i])))
+            catch e
+                print(e)
+            end
+        end
+        return x0_traj[d+1:end]
     end
 
-    return x0[d+1:end]
 end
 
 
@@ -288,8 +342,9 @@ function is_pinvariant_delay(A, Ad, F; d=0, symetric=true)
 
     n = size(A, 1) # ordem do sistema
     f = size(F, 1) # numero de linhas de f
-
     w = ones(f)
+
+    @variable(model, 0 <= lambda <= 1)
 
     if symetric
         @variable(model, K[1:n, 1:n])
@@ -306,19 +361,22 @@ function is_pinvariant_delay(A, Ad, F; d=0, symetric=true)
         @constraint(model, (L1-L2)*F == F*(Ad - K))
         @constraint(model, (M1-M2)*F == -F*K*(A - I(n)))
         @constraint(model, (N1-N2)*F == -F*K*Ad)
-        @constraint(model, ((H1 + H2) + (L1 + L2) + d*((M1 + M2) + (N1 + N2)))*w <= w)
+        @constraint(model, ((H1 + H2) + (L1 + L2) + d*((M1 + M2) + (N1 + N2)))*w .<= lambda * w)
+
+        @objective(model, Min, lambda)
 
         optimize!(model)
-
+        
+        lambda = value(lambda)
         K = value.(K)
         H = value.(H1) + value.(H2)
         L = value.(L1) + value.(L2)
 
-        result = Dict("K" => K, "H" => H, "L" => L)
-
         print(termination_status(model))
 
-        # retorna um dicionário com as matrizes K, H, L
+        # retorna um dicionário com lambda e as matrizes K, H e L
+        result = Dict("lambda" => lambda, "K" => K, "H" => H, "L" => L)
+
         return result
     end
     
@@ -332,17 +390,20 @@ function is_pinvariant_delay(A, Ad, F; d=0, symetric=true)
     @constraint(model, L*F == F*(Ad - K))
     @constraint(model, M*F == -F*K*(A - I(n)))
     @constraint(model, N*F == -F*K*Ad)
-    @constraint(model, (H + L + d*(M + N))*w <= w)
+    @constraint(model, (H + L + d*(M + N))*w .<= lambda * w)
+
+    @objective(model, Min, lambda)
 
     optimize!(model)
 
+    lambda = value(lambda)
     K = value.(K)
-    H = value.(H)
-    L = value.(L)
-
-    result = Dict("K" => K, "H" => H, "L" => L)
+    H = value.(H1) + value.(H2)
+    L = value.(L1) + value.(L2)
 
     print(termination_status(model))
+
+    result = Dict("lambda" => lambda, "K" => K, "H" => H, "L" => L)
 
     return result
 end
@@ -462,38 +523,50 @@ function allPossibleComb(j, dm)
     return collect(Iterators.product(ranges...))
 end
 
-# ASSUME QUE W É VETOR DE 1s
-function admissable_initCond(A, Ad, F, dm, w; symetric=false, fixed_delay=false)
+function admissable_initCond(A, Ad, F, dm, w; symetric=false, fixed_d=false)
     ext_F = extended_F(F, dm)
     ext_w = repeat(w, dm + 1)
 
-    A_array = extended_A_Vector(A, Ad, dm)
-
     init_cond_F = ext_F
-    init_cond_w = ext_w
+    init_cond_w = ext_w 
 
     n = size(A, 1)
     N = n * (dm + 1)
 
-    for i in 1:dm
-        indexes = allPossibleComb(i, dm)
-        for index in indexes
-            product = Matrix{Float64}(I, N, N)
-            for elem in index
-                product = A_array[elem] * product
+    if fixed_d == false
+        A_array = extended_A_Vector(A, Ad, dm)
+        
+        for i in 1:dm
+            indexes = allPossibleComb(i, dm)
+            for index in indexes
+                product = Matrix{Float64}(I, N, N)
+                for elem in index
+                    product = A_array[elem] * product
+                end
+                init_cond_F = vcat(init_cond_F, ext_F * product)
+                init_cond_w = vcat(init_cond_w, ext_w)
             end
-            init_cond_F = vcat(init_cond_F, ext_F * product)
-            init_cond_w = vcat(init_cond_w, ext_w)
+
+            init_cond_F, init_cond_w = elimred(init_cond_F, init_cond_w)
         end
+    else 
+        ext_A = extended_A(A, Ad, dm)
+        current_A_pow = ext_F
 
-        init_cond_F, init_cond_w = elimred(init_cond_F, init_cond_w)
+        for i in 1:dm
+            current_A_pow *= ext_A
+            init_cond_F = vcat(init_cond_F, current_A_pow)
+            init_cond_w = vcat(init_cond_w, ext_w)
+            
+            init_cond_F, init_cond_w = elimred(init_cond_F, init_cond_w)
+        end
     end
-
+        
     if symetric
-        return vcat(init_cond_F, -init_cond_F)
+        return vcat(init_cond_F, -init_cond_F), vcat(init_cond_w, init_cond_w)
     end
 
-    return init_cond_F
+    return init_cond_F, init_cond_w
 end
 
 end

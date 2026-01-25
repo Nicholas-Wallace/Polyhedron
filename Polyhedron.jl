@@ -35,6 +35,7 @@ function get_extreme_vertices(A, b, num_pontos=5)
     return lista_vertices
 end
 
+# Não lembro se já ta tudo certinho, tem que revisar.
 function get_vertices(F, w, init_cond, init_cond_w, index)
     hrep_ic = hrep(init_cond, init_cond_w)
     P = vrep(polyhedron(hrep_ic, CDDLib.Library()))
@@ -171,7 +172,7 @@ end
 # x0 é um vetor com todos as condições iniciais de [x(0), x(-1), ..., x(-d)]
 function trajectory_delay(x0, A, Ad, passos, d; varying=false, reverse=true)
     # Como o vetor vem na forma [x[k]...x[k-d]] para plotar a trajetória
-    # é Melhor que esteja na ordem cronológica [x[k-d]...x[k]]
+    # é melhor que esteja na ordem cronológica [x[k-d]...x[k]]
     x0_traj = copy(x0)
 
     if reverse
@@ -180,15 +181,25 @@ function trajectory_delay(x0, A, Ad, passos, d; varying=false, reverse=true)
     
     if varying == false
         for i in 1:passos
-            try 
-                push!(x0_traj, Tuple(A*collect(x0_traj[d+i]) + Ad*collect(x0_traj[i])))
-            catch e
-                print(e)
-            end
+            x_atual = collect(x0_traj[end])
+            x_atrasado = collect(x0_traj[end - d])
+            x_novo = A * x_atual + Ad * x_atrasado
+
+            push!(x0_traj, Tuple(x_novo))   
         end
-        return x0_traj[d+1:end]
+    else
+        for i in 1:passos
+            d_k = rand(1:d)
+
+            x_atual = collect(x0_traj[end])
+            x_atrasado = collect(x0_traj[end - d_k])
+            x_novo = A * x_atual + Ad * x_atrasado
+
+            push!(x0_traj, Tuple(x_novo))
+        end
     end
 
+    return x0_traj[d+1:end]
 end
 
 

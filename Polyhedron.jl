@@ -429,8 +429,6 @@ function step1_saturation(A, B, F, X; symetric=true)
 
     n = size(A, 1) # ordem do sistema
     f = size(F, 1) # numero de linhas de f
-    b = size(B, 1) 
-    b2 = size(B, 2)
     x = size(X, 1)
     w = ones(f)
     q = ones(x)
@@ -439,7 +437,7 @@ function step1_saturation(A, B, F, X; symetric=true)
     @variable(model, 0 <= d)
 
     if symetric
-        @variable(model, G[1:b2, 1:b])
+        @variable(model, G[1, 1:n])
         @variable(model, K[1:n, 1:n])
         @variable(model, 0 <= H1[1:f, 1:f])
         @variable(model, 0 <= H2[1:f, 1:f])
@@ -477,7 +475,7 @@ function step1_saturation(A, B, F, X; symetric=true)
         return result
     end
     
-    @variable(model, G[1:b2, 1:b])
+    @variable(model, G[1, 1:n])
     @variable(model, K[1:n, 1:n])
     @variable(model, 0 <= H[1:f, 1:f])
     @variable(model, 0 <= L[1:f, 1:f])
@@ -510,9 +508,104 @@ function step1_saturation(A, B, F, X; symetric=true)
 end
 
 # FALTA IMPLEMENTAR
-function step2_saturation()
+function step2_saturation(A, B, F, X, umax, umin; symetric=true)
+    model = Model() do
+        return NEOSServer.Optimizer(; email = "wallace.lopes.162@ufrn.edu.br", solver = "Knitro")
+    end
 
+    # parâmetros
+
+    n = size(A, 1) # ordem do sistema
+    f = size(F, 1) # numero de linhas de f
+    x = size(X, 1)
+    w = ones(f)
+    q = ones(x)
+
+    lambda = 0.99
+    @variable(model, 0 <= d)
+
+    if symetric
+        @variable(model, G[1, 1:n])
+        @variable(model, K[1:n, 1:n])
+        @variable(model, 0 <= H1[1:f, 1:f])
+        @variable(model, 0 <= H2[1:f, 1:f])
+        @variable(model, 0 <= L1[1:f, 1:f])
+        @variable(model, 0 <= L2[1:f, 1:f])
+        @variable(model, 0 <= M1[1:f, 1:f])
+        @variable(model, 0 <= M2[1:f, 1:f])
+        @variable(model, 0 <= N1[1:f, 1:f])
+        @variable(model, 0 <= N2[1:f, 1:f])
+        @variable(model, 0 <= R1[1:x, 1:f])
+        @variable(model, 0 <= R2[1:x, 1:f])
+
+        @constraint(model, (H1-H2)*F == F*(A + K))
+        @constraint(model, (L1-L2)*F == F*(B*G - K))
+        @constraint(model, (M1-M2)*F == -F*K*(A - I(n)))
+        @constraint(model, (N1-N2)*F == -F*K*B*G)
+        @constraint(model, ((H1 + H2) + (L1 + L2) + d*((M1 + M2) + (N1 + N2)))*w .<= lambda * w)
+        @constraint(model, (R1-R2)*F == X)
+        @constraint(model, (R1+R2)*q <= q)
+
+        @objective(model, Max, d)
+
+        optimize!(model)
+        
+        d = value(d)
+        K = value.(K)
+        H = value.(H1) + value.(H2)
+        L = value.(L1) + value.(L2)
+
+        print(termination_status(model))
+
+        # retorna um dicionário com lambda e as matrizes K, H e L
+        result = Dict("d" => d, "K" => K, "H" => H, "L" => L)
+
+        return result
+    end
+    
+    @variable(model, P[1, n])
+    @variable(model, G[1, n])
+    @variable(model, K[1:n, 1:n])
+    @variable(model, 0 <= H[1:f, 1:f])
+    @variable(model, 0 <= L1[1:f, 1:f])
+    @variable(model, 0 <= L2[1:f, 1:f])
+    @variable(model, 0 <= M[1:f, 1:f])
+    @variable(model, 0 <= N1[1:f, 1:f])
+    @variable(model, 0 <= N2[1:f, 1:f])
+    @variable(model, 0 <= R[1:x, 1:f])
+    @variable(model, Q1[1, 1:f])
+    @variable(model, Q2[1, 1:f])
+
+    @constraint(model, H*F == F*(A + K))
+    @constraint(model, L1*F == F*(B*G - K))
+    @constraint(model, L2*F == F*(B*P - K))
+    @constraint(model, M*F == -F*K*(A - I(n)))
+    @constraint(model, N1*F == -F*K*B*G)
+    @constraint(model, N2*F == -F*K*B*P)
+
+    @constraint(model, (H + L1 + d*(M + N1))*w .<= lambda * w)
+    @constraint(model, (H + L1 + d*(M + N2))*w .<= lambda * w)
+    @constraint(model, (H + L2 + d*(M + N1))*w .<= lambda * w)
+    @constraint(model, (H + L2 + d*(M + N2))*w .<= lambda * w)
+
+    @constraint(model, R*F = X)
+    @constraint(model, R*q <= q)
+
+    @objective(model, Max, enl)
+
+    optimize!(model)
+
+    K = value.(K)
+    H = value.(H)
+    L = value.(L)
+
+    print(termination_status(model))
+
+    result = Dict("K" => K, "H" => H, "L" => L)
+
+    return result
 end
+
 
 # funções auxiliares para gerar a matriz de condições iniciais admissiveis
 # futuramente mudar o aproach de matriz de matrizes

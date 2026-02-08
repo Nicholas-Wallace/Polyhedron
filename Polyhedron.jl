@@ -439,6 +439,7 @@ function step1_saturation(A, B, F, X; symetric=true)
     if symetric
         @variable(model, G[1, 1:n])
         @variable(model, K[1:n, 1:n])
+
         @variable(model, 0 <= H1[1:f, 1:f])
         @variable(model, 0 <= H2[1:f, 1:f])
         @variable(model, 0 <= L1[1:f, 1:f])
@@ -456,7 +457,7 @@ function step1_saturation(A, B, F, X; symetric=true)
         @constraint(model, (N1-N2)*F == -F*K*B*G)
         @constraint(model, ((H1 + H2) + (L1 + L2) + d*((M1 + M2) + (N1 + N2)))*w .<= lambda * w)
         @constraint(model, (R1-R2)*F == X)
-        @constraint(model, (R1+R2)*q <= q)
+        @constraint(model, (R1+R2)*w .<= q)
 
         @objective(model, Max, d)
 
@@ -475,7 +476,7 @@ function step1_saturation(A, B, F, X; symetric=true)
         return result
     end
     
-    @variable(model, G[1, 1:n])
+    @variable(model, G[1:1, 1:n])
     @variable(model, K[1:n, 1:n])
     @variable(model, 0 <= H[1:f, 1:f])
     @variable(model, 0 <= L[1:f, 1:f])
@@ -489,7 +490,7 @@ function step1_saturation(A, B, F, X; symetric=true)
     @constraint(model, N*F == -F*K*B*G)
     @constraint(model, (H + L + d*(M + N))*w .<= lambda * w)
     @constraint(model, R*F = X)
-    @constraint(model, R*q <= q)
+    @constraint(model, R*w .<= q)
 
     @objective(model, Max, d)
 
@@ -508,7 +509,7 @@ function step1_saturation(A, B, F, X; symetric=true)
 end
 
 # FALTA IMPLEMENTAR
-function step2_saturation(A, B, F, X, umax, umin; symetric=true)
+function step2_saturation(A, B, F, X, umax, umin, d; symetric=true)
     model = Model() do
         return NEOSServer.Optimizer(; email = "wallace.lopes.162@ufrn.edu.br", solver = "Knitro")
     end
@@ -522,29 +523,43 @@ function step2_saturation(A, B, F, X, umax, umin; symetric=true)
     q = ones(x)
 
     lambda = 0.99
-    @variable(model, 0 <= d)
 
     if symetric
-        @variable(model, G[1, 1:n])
+        @variable(model, P[1:1, 1:n])
+        @variable(model, G[1:1, 1:n])
         @variable(model, K[1:n, 1:n])
-        @variable(model, 0 <= H1[1:f, 1:f])
-        @variable(model, 0 <= H2[1:f, 1:f])
-        @variable(model, 0 <= L1[1:f, 1:f])
-        @variable(model, 0 <= L2[1:f, 1:f])
-        @variable(model, 0 <= M1[1:f, 1:f])
-        @variable(model, 0 <= M2[1:f, 1:f])
-        @variable(model, 0 <= N1[1:f, 1:f])
-        @variable(model, 0 <= N2[1:f, 1:f])
-        @variable(model, 0 <= R1[1:x, 1:f])
-        @variable(model, 0 <= R2[1:x, 1:f])
 
-        @constraint(model, (H1-H2)*F == F*(A + K))
-        @constraint(model, (L1-L2)*F == F*(B*G - K))
-        @constraint(model, (M1-M2)*F == -F*K*(A - I(n)))
-        @constraint(model, (N1-N2)*F == -F*K*B*G)
-        @constraint(model, ((H1 + H2) + (L1 + L2) + d*((M1 + M2) + (N1 + N2)))*w .<= lambda * w)
-        @constraint(model, (R1-R2)*F == X)
-        @constraint(model, (R1+R2)*q <= q)
+        @variable(model, 0 <= Hp[1:f, 1:f])
+        @variable(model, 0 <= Hm[1:f, 1:f])
+        @variable(model, 0 <= L1p[1:f, 1:f])
+        @variable(model, 0 <= L1m[1:f, 1:f])
+        @variable(model, 0 <= L2p[1:f, 1:f])
+        @variable(model, 0 <= L2m[1:f, 1:f])
+        @variable(model, 0 <= Mp[1:f, 1:f])
+        @variable(model, 0 <= Mm[1:f, 1:f])
+        @variable(model, 0 <= N1p[1:f, 1:f])
+        @variable(model, 0 <= N1m[1:f, 1:f])
+        @variable(model, 0 <= N2p[1:f, 1:f])
+        @variable(model, 0 <= N2m[1:f, 1:f])
+        @variable(model, 0 <= Rp[1:x, 1:f])
+        @variable(model, 0 <= Rm[1:x, 1:f])
+        @variable(model, 0 <= Q1[1:1, 1:f])
+        @variable(model, 0 <= Q2[1:1, 1:f])
+    
+
+        @constraint(model, (Hp-Hm)*F == F*(A + K))
+        @constraint(model, (L1p-L1m)*F == F*(B*G - K))
+        @constraint(model, (L2p-L2m)*F == F*(B*P - K))
+        @constraint(model, (Mp-Mm)*F == -F*K*(A - I(n)))
+        @constraint(model, (N1p-N1m)*F == -F*K*B*G)
+        @constraint(model, (N2p-N2m)*F == -F*K*B*P)
+        @constraint(model, ((Hp + Hm) + (L1p + L1m) + d*((Mp + Mm) + (N1p + N1m)))*w .<= lambda * w)
+        @constraint(model, ((Hp + Hm) + (L1p + L1m) + d*((Mp + Mm) + (N2p + N2m)))*w .<= lambda * w)
+        @constraint(model, ((Hp + Hm) + (L2p + L2m) + d*((Mp + Mm) + (N1p + N1m)))*w .<= lambda * w)
+        @constraint(model, ((Hp + Hm) + (L2p + L2m) + d*((Mp + Mm) + (N2p + N2m)))*w .<= lambda * w)
+
+        @constraint(model, (Rp-Rm)*F == X)
+        @constraint(model, (Rp+Rm)*w .<= q)
 
         @objective(model, Max, d)
 
@@ -563,9 +578,10 @@ function step2_saturation(A, B, F, X, umax, umin; symetric=true)
         return result
     end
     
-    @variable(model, P[1, n])
-    @variable(model, G[1, n])
+    @variable(model, P[1:1, 1:n])
+    @variable(model, G[1:1, 1:n])
     @variable(model, K[1:n, 1:n])
+
     @variable(model, 0 <= H[1:f, 1:f])
     @variable(model, 0 <= L1[1:f, 1:f])
     @variable(model, 0 <= L2[1:f, 1:f])
@@ -573,8 +589,8 @@ function step2_saturation(A, B, F, X, umax, umin; symetric=true)
     @variable(model, 0 <= N1[1:f, 1:f])
     @variable(model, 0 <= N2[1:f, 1:f])
     @variable(model, 0 <= R[1:x, 1:f])
-    @variable(model, Q1[1, 1:f])
-    @variable(model, Q2[1, 1:f])
+    @variable(model, 0 <= Q1[1:1, 1:f])
+    @variable(model, 0 <= Q2[1:1, 1:f])
 
     @constraint(model, H*F == F*(A + K))
     @constraint(model, L1*F == F*(B*G - K))
@@ -589,7 +605,12 @@ function step2_saturation(A, B, F, X, umax, umin; symetric=true)
     @constraint(model, (H + L2 + d*(M + N2))*w .<= lambda * w)
 
     @constraint(model, R*F = X)
-    @constraint(model, R*q <= q)
+    @constraint(model, R*w .<= q)
+    
+    @constraint(model, Q1*F == P)
+    @constraint(model, Q2*F == -P)
+    @constraint(model, Q1*w .<= umax)
+    @constraint(model, Q2*w .<= umin)
 
     @objective(model, Max, enl)
 

@@ -420,7 +420,7 @@ function is_pinvariant_delay(A, Ad, F; d=0, symetric=true)
 end
 
 # Passo 1 da saturação
-function step1_saturation(A, B, F, X; symetric=true)
+function step1_saturation(A, B, F, X, lambda=0.99; symetric=true)
     model = Model() do
         return NEOSServer.Optimizer(; email = "wallace.lopes.162@ufrn.edu.br", solver = "Knitro")
     end
@@ -433,7 +433,6 @@ function step1_saturation(A, B, F, X; symetric=true)
     w = ones(f)
     q = ones(x)
 
-    lambda = 0.99
     @variable(model, 0 <= d)
 
     if symetric
@@ -509,7 +508,7 @@ function step1_saturation(A, B, F, X; symetric=true)
 end
 
 # FALTA IMPLEMENTAR
-function step2_saturation(A, B, F, X, umax, umin, d; symetric=true)
+function step2_saturation(A, B, F, X, umax, umin, d, ll=6, lambda=0.99, v=8; symetric=true)
     model = Model() do
         return NEOSServer.Optimizer(; email = "wallace.lopes.162@ufrn.edu.br", solver = "Knitro")
     end
@@ -522,13 +521,14 @@ function step2_saturation(A, B, F, X, umax, umin, d; symetric=true)
     w = ones(f)
     q = ones(x)
 
-    lambda = 0.99
+    vet_array = Polyhedron.vet_eq_spc(v)
 
     if symetric
         @variable(model, P[1:1, 1:n])
         @variable(model, G[1:1, 1:n])
         @variable(model, K[1:n, 1:n])
 
+        @variable(model, L[1:ll, 1:n])
         @variable(model, 0 <= Hp[1:f, 1:f])
         @variable(model, 0 <= Hm[1:f, 1:f])
         @variable(model, 0 <= L1p[1:f, 1:f])
@@ -543,10 +543,12 @@ function step2_saturation(A, B, F, X, umax, umin, d; symetric=true)
         @variable(model, 0 <= N2m[1:f, 1:f])
         @variable(model, 0 <= Rp[1:x, 1:f])
         @variable(model, 0 <= Rm[1:x, 1:f])
-        @variable(model, 0 <= Q1[1:1, 1:f])
-        @variable(model, 0 <= Q2[1:1, 1:f])
+        @variable(model, 0 <= Qp[1:1, 1:f])
+        @variable(model, 0 <= Qm[1:1, 1:f])
     
-
+        @variable(model, gamma[1:t] >= 0)
+        @objective(model, Max, gamma)
+    
         @constraint(model, (Hp-Hm)*F == F*(A + K))
         @constraint(model, (L1p-L1m)*F == F*(B*G - K))
         @constraint(model, (L2p-L2m)*F == F*(B*P - K))
@@ -561,7 +563,14 @@ function step2_saturation(A, B, F, X, umax, umin, d; symetric=true)
         @constraint(model, (Rp-Rm)*F == X)
         @constraint(model, (Rp+Rm)*w .<= q)
 
-        @objective(model, Max, d)
+        @constraint(model, (Qp - Qm)*F == P)
+        @constraint(model, (Qp + Qm)*w .<= umax)
+
+        for i in range(1, t)
+            @constraint(model, L*gamma[i]*vet[i] .<= xl)
+        end
+
+        @objective(model, Max, gamma)
 
         optimize!(model)
         

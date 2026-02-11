@@ -420,7 +420,7 @@ function is_pinvariant_delay(A, Ad, F; d=0, symetric=true)
 end
 
 # Passo 1 da saturação
-function step1_saturation(A, B, F, X, lambda=0.99; symetric=true)
+function step1_saturation(A, B, X, f, lambda=0.99; symetric=true)
     model = Model() do
         return NEOSServer.Optimizer(; email = "wallace.lopes.162@ufrn.edu.br", solver = "Knitro")
     end
@@ -428,70 +428,68 @@ function step1_saturation(A, B, F, X, lambda=0.99; symetric=true)
     # parâmetros
 
     n = size(A, 1) # ordem do sistema
-    f = size(F, 1) # numero de linhas de f
     x = size(X, 1)
     w = ones(f)
     q = ones(x)
 
-    @variable(model, 0 <= d)
+    @variable(model, 0 <= d <= 100)
+
+    @variable(model, G[1:1, 1:n])
+    @variable(model, K[1:n, 1:n])
+    @variable(model, F[1:f, 1:n])
+
+    @objective(model, Max, d)
 
     if symetric
-        @variable(model, G[1, 1:n])
-        @variable(model, K[1:n, 1:n])
-
-        @variable(model, 0 <= H1[1:f, 1:f])
-        @variable(model, 0 <= H2[1:f, 1:f])
-        @variable(model, 0 <= L1[1:f, 1:f])
-        @variable(model, 0 <= L2[1:f, 1:f])
-        @variable(model, 0 <= M1[1:f, 1:f])
-        @variable(model, 0 <= M2[1:f, 1:f])
-        @variable(model, 0 <= N1[1:f, 1:f])
-        @variable(model, 0 <= N2[1:f, 1:f])
+        @variable(model, 0 <= H1[1:f, 1:f] <= 100)
+        @variable(model, 0 <= H2[1:f, 1:f] <= 100)
+        @variable(model, 0 <= L1[1:f, 1:f] <= 100)
+        @variable(model, 0 <= L2[1:f, 1:f] <= 100)
+        @variable(model, 0 <= M1[1:f, 1:f] <= 100)
+        @variable(model, 0 <= M2[1:f, 1:f] <= 100)
+        @variable(model, 0 <= N1[1:f, 1:f] <= 100)
+        @variable(model, 0 <= N2[1:f, 1:f] <= 100)
         @variable(model, 0 <= R1[1:x, 1:f])
         @variable(model, 0 <= R2[1:x, 1:f])
 
         @constraint(model, (H1-H2)*F == F*(A + K))
         @constraint(model, (L1-L2)*F == F*(B*G - K))
         @constraint(model, (M1-M2)*F == -F*K*(A - I(n)))
-        @constraint(model, (N1-N2)*F == -F*K*B*G)
+        @constraint(model, (N1-N2)*F == -F*K*(B*G))
         @constraint(model, ((H1 + H2) + (L1 + L2) + d*((M1 + M2) + (N1 + N2)))*w .<= lambda * w)
         @constraint(model, (R1-R2)*F == X)
         @constraint(model, (R1+R2)*w .<= q)
 
-        @objective(model, Max, d)
-
         optimize!(model)
         
         d = value(d)
+        F = value.(F)
         K = value.(K)
         H = value.(H1) + value.(H2)
         L = value.(L1) + value.(L2)
+        G = value.(G)
 
         print(termination_status(model))
 
         # retorna um dicionário com lambda e as matrizes K, H e L
-        result = Dict("d" => d, "K" => K, "H" => H, "L" => L)
+        result = Dict("d" => d, "F" => F, "K" => K, "H" => H, "L" => L, "G" => G)
 
         return result
     end
     
-    @variable(model, G[1:1, 1:n])
-    @variable(model, K[1:n, 1:n])
-    @variable(model, 0 <= H[1:f, 1:f])
-    @variable(model, 0 <= L[1:f, 1:f])
-    @variable(model, 0 <= M[1:f, 1:f])
-    @variable(model, 0 <= N[1:f, 1:f])
+    @variable(model, 0 <= H[1:f, 1:f] <= 100)
+    @variable(model, 0 <= L[1:f, 1:f] <= 100)
+    @variable(model, 0 <= M[1:f, 1:f] <= 100)
+    @variable(model, 0 <= N[1:f, 1:f] <= 100)
     @variable(model, 0 <= R[1:x, 1:f])
 
     @constraint(model, H*F == F*(A + K))
     @constraint(model, L*F == F*(B*G - K))
-    @constraint(model, M*F == -F*K*(A - I(n)))
-    @constraint(model, N*F == -F*K*B*G)
+    @constraint(model, M*F == -Y*(A - I(n)))
+    @constraint(model, N*F == -Y*B*G)
     @constraint(model, (H + L + d*(M + N))*w .<= lambda * w)
-    @constraint(model, R*F = X)
+    @constraint(model, R*F == X)
     @constraint(model, R*w .<= q)
-
-    @objective(model, Max, d)
 
     optimize!(model)
 
@@ -507,8 +505,8 @@ function step1_saturation(A, B, F, X, lambda=0.99; symetric=true)
     return result
 end
 
-# FALTA IMPLEMENTAR
-function step2_saturation(A, B, X, umax, umin, d, lambda=0.99, v=8; symetric=true)
+# FALTA IMPLEMENTAR MUDANÇAS FEITAS NO PASSO 1
+function step2_saturation(A, B, X, G, umax, umin, d, lambda=0.99, v=8; symetric=true)
     model = Model() do
         return NEOSServer.Optimizer(; email = "wallace.lopes.162@ufrn.edu.br", solver = "Knitro")
     end
@@ -524,14 +522,19 @@ function step2_saturation(A, B, X, umax, umin, d, lambda=0.99, v=8; symetric=tru
     vet_array = Polyhedron.vet_eq_spc(v)
 
     @variable(model, P[1:1, 1:n])
-    @variable(model, G[1:1, 1:n])
     @variable(model, K[1:n, 1:n])
+    @variable(mode, Y[1:f, 1:n])
 
     @variable(model, F[1:f, 1:n])
     @variable(model, gamma[1:1, 1:f] >= 0)
 
     @variable(model, J[1:n, 1:f])
     @constraint(model, J * F .== I(n))
+
+    # O JuMP não consegue calcular multiplicação de 3 matrizes variáveis,
+    # Por isso foi introduzido o Y para substituir FK
+
+    @constraint(model, Y == F*K)
 
     for i in 1:f
         @constraint(model, F * (gamma[i] * vet[i]) .<= w)
@@ -560,9 +563,9 @@ function step2_saturation(A, B, X, umax, umin, d, lambda=0.99, v=8; symetric=tru
         @constraint(model, (Hp - Hm)*F == F*(A + K))
         @constraint(model, (L1p - L1m)*F == F*(B*G - K))
         @constraint(model, (L2p - L2m)*F == F*(B*P - K))
-        @constraint(model, (Mp - Mm)*F == -F*K*(A - I(n)))
-        @constraint(model, (N1p - N1m)*F == -F*K*B*G)
-        @constraint(model, (N2p - N2m)*F == -F*K*B*P)
+        @constraint(model, (Mp - Mm)*F == -Y(A - I(n)))
+        @constraint(model, (N1p - N1m)*F == -Y*B*G)
+        @constraint(model, (N2p - N2m)*F == -Y*B*P)
         @constraint(model, ((Hp + Hm) + (L1p + L1m) + d*((Mp + Mm) + (N1p + N1m)))*w .<= lambda * w)
         @constraint(model, ((Hp + Hm) + (L1p + L1m) + d*((Mp + Mm) + (N2p + N2m)))*w .<= lambda * w)
         @constraint(model, ((Hp + Hm) + (L2p + L2m) + d*((Mp + Mm) + (N1p + N1m)))*w .<= lambda * w)
@@ -583,11 +586,10 @@ function step2_saturation(A, B, X, umax, umin, d, lambda=0.99, v=8; symetric=tru
         H = value.(Hp) + value.(Hm)
         L1 = value.(L1p) + value.(L1m)
         L2 = value.(L2p) + value.(L2m)
-        L = L1 + L2
         print(termination_status(model))
 
         # retorna um dicionário com matrizes F, K, H e L
-        result = Dict("F" => F, "K" => K, "H" => H, "L" => L)
+        result = Dict("F" => F, "K" => K, "H" => H, "L1" => L1, "L2" => L2, "G" => G)
 
         return result
     end
@@ -605,9 +607,9 @@ function step2_saturation(A, B, X, umax, umin, d, lambda=0.99, v=8; symetric=tru
     @constraint(model, H*F == F*(A + K))
     @constraint(model, L1*F == F*(B*G - K))
     @constraint(model, L2*F == F*(B*P - K))
-    @constraint(model, M*F == -F*K*(A - I(n)))
-    @constraint(model, N1*F == -F*K*B*G)
-    @constraint(model, N2*F == -F*K*B*P)
+    @constraint(model, M*F == -Y*(A - I(n)))
+    @constraint(model, N1*F == -Y*(B*G))
+    @constraint(model, N2*F == -Y*(B*P))
 
     @constraint(model, (H + L1 + d*(M + N1))*w .<= lambda * w)
     @constraint(model, (H + L1 + d*(M + N2))*w .<= lambda * w)
@@ -631,7 +633,7 @@ function step2_saturation(A, B, X, umax, umin, d, lambda=0.99, v=8; symetric=tru
 
     print(termination_status(model))
 
-    result = Dict("F" => F, "K" => K, "H" => H, "L" => L)
+    result = Dict("F" => F, "K" => K, "H" => H, "L1" => L1, "L2" => L2, "G" => G)
 
     return result
 end

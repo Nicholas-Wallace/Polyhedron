@@ -1,3 +1,4 @@
+# Passo 1 da saturação
 function step1_saturation(A, B, X, f; lambda=0.99, symetric=true)
     model = Model() do
         return NEOSServer.Optimizer(; email = "wallace.lopes.162@ufrn.edu.br", solver = "Knitro")
@@ -7,39 +8,76 @@ function step1_saturation(A, B, X, f; lambda=0.99, symetric=true)
 
     n = size(A, 1) # ordem do sistema
     x = size(X, 1)
-    b = size(B, 1)
     w = ones(f)
     q = ones(x)
 
     @variable(model, 0 <= d <= 100)
 
-    @variable(model, F[1:f, 1:n])
-    @variable(model, K[1:n, 1:n])
     @variable(model, G[1:1, 1:n])
+    @variable(model, K[1:n, 1:n])
+    @variable(model, F[1:f, 1:n])
+    @variable(model, Y[1:f, 1:n])
+    @variable(model, J[1:n, 1:f])
+
+    @constraint(model, Y == F*K)
+    @constraint(model, J*F == I(n))
+
+    @objective(model, Max, d)
+
+    if symetric
+        @variable(model, 0 <= H1[1:f, 1:f] <= 100)
+        @variable(model, 0 <= H2[1:f, 1:f] <= 100)
+        @variable(model, 0 <= L1[1:f, 1:f] <= 100)
+        @variable(model, 0 <= L2[1:f, 1:f] <= 100)
+        @variable(model, 0 <= M1[1:f, 1:f] <= 100)
+        @variable(model, 0 <= M2[1:f, 1:f] <= 100)
+        @variable(model, 0 <= N1[1:f, 1:f] <= 100)
+        @variable(model, 0 <= N2[1:f, 1:f] <= 100)
+        @variable(model, 0 <= R1[1:x, 1:f] <= 100)
+        @variable(model, 0 <= R2[1:x, 1:f] <= 100)
+
+        @constraint(model, (H1-H2)*F == F*(A + K))
+        @constraint(model, (L1-L2)*F == F*(B*G - K))
+        @constraint(model, (M1-M2)*F == -Y*(A - I(n)))
+        @constraint(model, (N1-N2)*F == -Y*(B*G))
+        @constraint(model, ((H1 + H2) + (L1 + L2) + d*((M1 + M2) + (N1 + N2)))*w .<= lambda * w)
+        @constraint(model, (R1-R2)*F == X)
+        @constraint(model, (R1+R2)*w .<= q)
+
+        optimize!(model)
+        
+        d = value(d)
+        F = value.(F)
+        K = value.(K)
+        H = value.(H1) - value.(H2)
+        L = value.(L1) - value.(L2)
+        M = value.(M1) - value.(M2)
+        N = value.(M1) - value.(M2)
+        R = value.(R1) - value.(R2)
+        G = value.(G)
+
+        print(termination_status(model))
+
+        # retorna um dicionário com d e as matrizes
+        result = Dict("d" => d, "F" => F, "G" => G, "K" => K, "H" => H, "L" => L, "M" => M, "N" => N, "R" => R)
+
+        return result
+    end
     
     @variable(model, 0 <= H[1:f, 1:f] <= 200)
     @variable(model, 0 <= L[1:f, 1:f] <= 200)
     @variable(model, 0 <= M[1:f, 1:f] <= 200)
     @variable(model, 0 <= N[1:f, 1:f] <= 200)
     @variable(model, 0 <= R[1:x, 1:f] <= 200)
-    @variable(model, BG[1:b, 1:n])
 
-    @constraint(model, BG == B*G)
-    @constraint(model, H*F == F*(A+K))
-    @constraint(model, L*F == F*(BG - K))
-    @constraint(model, M*F == -F*K*(A - I(n)))
-    @constraint(model, N*F == -F*K*(BG))
+    @constraint(model, H*F == F*(A + K))
+    @constraint(model, L*F == F*(B*G - K))
+    @constraint(model, M*F == -Y*(A - I(n)))
+    @constraint(model, N*F == -Y*(B*G))
     @constraint(model, (H + L + d*(M + N))*w .<= lambda * w)
     @constraint(model, R*F == X)
     @constraint(model, R*w .<= q)
 
-    #set_optimal_start_values(model)
-    set_start_value(d, 2)
-    set_start_value(G[1, 1], −1.9812)
-    set_start_value(G[1, 2], −0.9098)
-
-
-    @objective(model, Min, -d)
     optimize!(model)
 
     d = value(d)
@@ -52,14 +90,15 @@ function step1_saturation(A, B, X, f; lambda=0.99, symetric=true)
     N = value.(N)
     R = value.(R)
 
-    println(termination_status(model))
+    print(termination_status(model))
 
     result = Dict("d" => d, "F" => F, "G" => G, "K" => K, "H" => H, "L" => L, "M" => M, "N" => N, "R" => R)
 
     return result
 end
 
-# FALTA IMPLEMENTAR MUDANÇAS FEITAS NO PASSO 1
+# FALTA IMPLEMENTAR MUDANÇAS FEITAS NO PASSO 1 E MOVER O IF PRA CIMA DEPOIS DE DESCOBRIR 
+# O QUE TEM DE ERRADO NO 1
 function step2_saturation(A, B, X, G, umax, umin, d; f = 4, v=8, lambda=0.99, symetric=true)
     model = Model() do
         return NEOSServer.Optimizer(; email = "wallace.lopes.162@ufrn.edu.br", solver = "Knitro")

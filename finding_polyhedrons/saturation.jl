@@ -111,73 +111,26 @@ function step2_saturation(A, B, X, G, umax, umin, d; f = 4, v=8, lambda=0.99, sy
     w = ones(f)
     q = ones(x)
 
-    vet = vet_array = Polyhedron.vet_eq_spc(v)
+    #TALVEZ TENHA QUE MUDAR ESSE "Polyhedron. ...", NÃO TESTEI SE É "Poly." MESMO.
+    vet = vet_array = Poly.vet_eq_spc(v)
     xt = ones(v)
 
-    @variable(model, F[1:f, 1:n])
-    @variable(model, P[1:1, 1:n])
-
-    @variable(model, 0 <= H[1:f, 1:f] <= 100)
-    @variable(model, 0 <= L1[1:f, 1:f] <= 100)
-    @variable(model, 0 <= L2[1:f, 1:f] <= 100)
-    @variable(model, 0 <= M[1:f, 1:f] <= 100)
-    @variable(model, 0 <= N1[1:f, 1:f] <= 100)
-    @variable(model, 0 <= N2[1:f, 1:f] <= 100)
-    @variable(model, 0 <= R[1:x, 1:f] <= 100)
-    @variable(model, 0 <= Q1[1:1, 1:f] <= 100)
-    @variable(model, 0 <= Q2[1:1, 1:f] <= 100)
-
-    @variable(model, K[1:n, 1:n])
-    @variable(model, G[1:1, 1:n])
-
-    @variable(model, gamma[1:f] >= 0)
-
+    # TESTAR SEM E DEPOIS COM ISSO
     #@variable(model, J[1:n, 1:f])
     #@constraint(model, J * F .== I(n))
 
-    # O JuMP não consegue calcular multiplicação de 3 matrizes variáveis,
-    # Por isso foi introduzido o Y para substituir FK
-
+    @variable(model, K[1:n, 1:n])
+    @variable(model, F[1:f, 1:n])
+    @variable(model, P[1:1, 1:n])
+    @variable(model, gamma[1:f] >= 0)
+    @variable(model, Y[1:f, 1:n])
 
     for i in 1:v
         @constraint(model, F * (gamma[i] * vet[i]) .<= w)
-    end    
+    end
+    @constraint(model, Y == F*K)
 
-    @constraint(model, H*F == F*(A + K))
-    @constraint(model, L1*F == F*(B*G - K))
-    @constraint(model, L2*F == F*(B*P - K))
-    @constraint(model, M*F == -(F*K)*(A - I(n)))
-    @constraint(model, N1*F == -(F*K)*(B*G))
-    @constraint(model, N2*F == -(F*K)*(B*P))
-
-    @constraint(model, (H + L1 + d*(M + N1))*w .<= lambda * w)
-    @constraint(model, (H + L1 + d*(M + N2))*w .<= lambda * w)
-    @constraint(model, (H + L2 + d*(M + N1))*w .<= lambda * w)
-    @constraint(model, (H + L2 + d*(M + N2))*w .<= lambda * w)
-
-    @constraint(model, Q1*F == P)
-    @constraint(model, Q2*F == -P)
-
-    @constraint(model, Q1*w .<= umax)
-    @constraint(model, Q2*w .<= umin)
-
-    @constraint(model, R*F == X)
-    @constraint(model, R*w .<= q)
-    
     @objective(model, Max, sum(gamma))
-    optimize!(model)
-
-    F = value(F)
-    G = value(G)
-    K = value.(K)
-    H = value.(H)
-    L = value.(L)
-
-    print(termination_status(model))
-
-    result = Dict("F" => F, "K" => K, "H" => H, "L1" => L1, "L2" => L2, "G" => G)
-
-    return result
 
     if symetric
         @variable(model, 0 <= Hp[1:f, 1:f])
@@ -220,9 +173,9 @@ function step2_saturation(A, B, X, G, umax, umin, d; f = 4, v=8, lambda=0.99, sy
         
         F = value(F)
         K = value.(K)
-        H = value.(Hp) + value.(Hm)
-        L1 = value.(L1p) + value.(L1m)
-        L2 = value.(L2p) + value.(L2m)
+        H = value.(Hp) - value.(Hm)
+        L1 = value.(L1p) - value.(L1m)
+        L2 = value.(L2p) - value.(L2m)
         print(termination_status(model))
 
         # retorna um dicionário com matrizes F, K, H e L
@@ -231,4 +184,48 @@ function step2_saturation(A, B, X, G, umax, umin, d; f = 4, v=8, lambda=0.99, sy
         return result
     end
 
+    @variable(model, 0 <= H[1:f, 1:f] <= 100)
+    @variable(model, 0 <= L1[1:f, 1:f] <= 100)
+    @variable(model, 0 <= L2[1:f, 1:f] <= 100)
+    @variable(model, 0 <= M[1:f, 1:f] <= 100)
+    @variable(model, 0 <= N1[1:f, 1:f] <= 100)
+    @variable(model, 0 <= N2[1:f, 1:f] <= 100)
+    @variable(model, 0 <= R[1:x, 1:f] <= 100)
+    @variable(model, 0 <= Q1[1:1, 1:f] <= 100)
+    @variable(model, 0 <= Q2[1:1, 1:f] <= 100)
+
+    @constraint(model, H*F == F*(A + K))
+    @constraint(model, L1*F == F*(B*G - K))
+    @constraint(model, L2*F == F*(B*P - K))
+    @constraint(model, M*F == -(F*K)*(A - I(n)))
+    @constraint(model, N1*F == -(F*K)*(B*G))
+    @constraint(model, N2*F == -(F*K)*(B*P))
+
+    @constraint(model, (H + L1 + d*(M + N1))*w .<= lambda * w)
+    @constraint(model, (H + L1 + d*(M + N2))*w .<= lambda * w)
+    @constraint(model, (H + L2 + d*(M + N1))*w .<= lambda * w)
+    @constraint(model, (H + L2 + d*(M + N2))*w .<= lambda * w)
+
+    @constraint(model, Q1*F == P)
+    @constraint(model, Q2*F == -P)
+
+    @constraint(model, Q1*w .<= umax)
+    @constraint(model, Q2*w .<= umin)
+
+    @constraint(model, R*F == X)
+    @constraint(model, R*w .<= q)
+    
+    optimize!(model)
+
+    F = value(F)
+    G = value(G)
+    K = value.(K)
+    H = value.(H)
+    L = value.(L)
+
+    print(termination_status(model))
+
+    result = Dict("F" => F, "K" => K, "H" => H, "L1" => L1, "L2" => L2, "G" => G)
+
+    return result
 end

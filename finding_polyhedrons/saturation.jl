@@ -52,7 +52,7 @@ function step1_saturation(A, B, X, f; lambda=0.99, symetric=true)
         H = value.(H1) - value.(H2)
         L = value.(L1) - value.(L2)
         M = value.(M1) - value.(M2)
-        N = value.(M1) - value.(M2)
+        N = value.(N1) - value.(N2)
         R = value.(R1) - value.(R2)
         G = value.(G)
 
@@ -115,15 +115,15 @@ function step2_saturation(A, B, X, G, umax, umin, d; f = 4, v=8, lambda=0.99, sy
     vet = vet_array = Poly.vet_eq_spc(v)
     xt = ones(v)
 
-    # TESTAR SEM E DEPOIS COM ISSO
-    #@variable(model, J[1:n, 1:f])
-    #@constraint(model, J * F .== I(n))
-
     @variable(model, K[1:n, 1:n])
     @variable(model, F[1:f, 1:n])
     @variable(model, P[1:1, 1:n])
     @variable(model, gamma[1:f] >= 0)
     @variable(model, Y[1:f, 1:n])
+
+    # TESTAR SEM E DEPOIS COM ISSO
+    @variable(model, J[1:n, 1:f])
+    @constraint(model, J*F == I(n))
 
     for i in 1:v
         @constraint(model, F * (gamma[i] * vet[i]) .<= w)
@@ -153,9 +153,9 @@ function step2_saturation(A, B, X, G, umax, umin, d; f = 4, v=8, lambda=0.99, sy
         @constraint(model, (Hp - Hm)*F == F*(A + K))
         @constraint(model, (L1p - L1m)*F == F*(B*G - K))
         @constraint(model, (L2p - L2m)*F == F*(B*P - K))
-        @constraint(model, (Mp - Mm)*F == -Y(A - I(n)))
-        @constraint(model, (N1p - N1m)*F == -Y*B*G)
-        @constraint(model, (N2p - N2m)*F == -Y*B*P)
+        @constraint(model, (Mp - Mm)*F == -Y*(A - I(n)))
+        @constraint(model, (N1p - N1m)*F == -Y*(B*G))
+        @constraint(model, (N2p - N2m)*F == -Y*(B*P))
         @constraint(model, ((Hp + Hm) + (L1p + L1m) + d*((Mp + Mm) + (N1p + N1m)))*w .<= lambda * w)
         @constraint(model, ((Hp + Hm) + (L1p + L1m) + d*((Mp + Mm) + (N2p + N2m)))*w .<= lambda * w)
         @constraint(model, ((Hp + Hm) + (L2p + L2m) + d*((Mp + Mm) + (N1p + N1m)))*w .<= lambda * w)
@@ -166,8 +166,6 @@ function step2_saturation(A, B, X, G, umax, umin, d; f = 4, v=8, lambda=0.99, sy
 
         @constraint(model, (Qp - Qm)*F == P)
         @constraint(model, (Qp + Qm)*w .<= umax)
-
-        @objective(model, Max, gamma)
 
         optimize!(model)
         
@@ -217,11 +215,12 @@ function step2_saturation(A, B, X, G, umax, umin, d; f = 4, v=8, lambda=0.99, sy
     
     optimize!(model)
 
-    F = value(F)
-    G = value(G)
+    F = value.(F)
+    G = value.(G)
     K = value.(K)
     H = value.(H)
-    L = value.(L)
+    L1 = value.(L1)
+    L2 = value.(L2)
 
     print(termination_status(model))
 

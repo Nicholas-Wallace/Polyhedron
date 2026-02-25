@@ -111,15 +111,14 @@ function step2_saturation(A, B, X, G, umax, umin, d; f = 4, v=8, lambda=0.99, sy
     w = ones(f)
     q = ones(x)
 
-    #TALVEZ TENHA QUE MUDAR ESSE "Polyhedron. ...", NÃO TESTEI SE É "Poly." MESMO.
-    vet = vet_array = Poly.vet_eq_spc(v)
+    vet = vet_eq_spc(v)
     xt = ones(v)
 
     @variable(model, K[1:n, 1:n])
     @variable(model, F[1:f, 1:n])
     @variable(model, P[1:1, 1:n])
-    @variable(model, gamma[1:f] >= 0)
-    @variable(model, Y[1:f, 1:n])
+    @variable(model, gamma[1:v] >= 0)
+    
 
     # TESTAR SEM E DEPOIS COM ISSO
     @variable(model, J[1:n, 1:f])
@@ -127,59 +126,6 @@ function step2_saturation(A, B, X, G, umax, umin, d; f = 4, v=8, lambda=0.99, sy
 
     for i in 1:v
         @constraint(model, F * (gamma[i] * vet[i]) .<= w)
-    end
-    @constraint(model, Y == F*K)
-
-    @objective(model, Max, sum(gamma))
-
-    if symetric
-        @variable(model, 0 <= Hp[1:f, 1:f])
-        @variable(model, 0 <= Hm[1:f, 1:f])
-        @variable(model, 0 <= L1p[1:f, 1:f])
-        @variable(model, 0 <= L1m[1:f, 1:f])
-        @variable(model, 0 <= L2p[1:f, 1:f])
-        @variable(model, 0 <= L2m[1:f, 1:f])
-        @variable(model, 0 <= Mp[1:f, 1:f])
-        @variable(model, 0 <= Mm[1:f, 1:f])
-        @variable(model, 0 <= N1p[1:f, 1:f])
-        @variable(model, 0 <= N1m[1:f, 1:f])
-        @variable(model, 0 <= N2p[1:f, 1:f])
-        @variable(model, 0 <= N2m[1:f, 1:f])
-        @variable(model, 0 <= Rp[1:x, 1:f])
-        @variable(model, 0 <= Rm[1:x, 1:f])
-        @variable(model, 0 <= Qp[1:1, 1:f])
-        @variable(model, 0 <= Qm[1:1, 1:f])
-    
-        @constraint(model, (Hp - Hm)*F == F*(A + K))
-        @constraint(model, (L1p - L1m)*F == F*(B*G - K))
-        @constraint(model, (L2p - L2m)*F == F*(B*P - K))
-        @constraint(model, (Mp - Mm)*F == -Y*(A - I(n)))
-        @constraint(model, (N1p - N1m)*F == -Y*(B*G))
-        @constraint(model, (N2p - N2m)*F == -Y*(B*P))
-        @constraint(model, ((Hp + Hm) + (L1p + L1m) + d*((Mp + Mm) + (N1p + N1m)))*w .<= lambda * w)
-        @constraint(model, ((Hp + Hm) + (L1p + L1m) + d*((Mp + Mm) + (N2p + N2m)))*w .<= lambda * w)
-        @constraint(model, ((Hp + Hm) + (L2p + L2m) + d*((Mp + Mm) + (N1p + N1m)))*w .<= lambda * w)
-        @constraint(model, ((Hp + Hm) + (L2p + L2m) + d*((Mp + Mm) + (N2p + N2m)))*w .<= lambda * w)
-
-        @constraint(model, (Rp - Rm)*F == X)
-        @constraint(model, (Rp + Rm)*w .<= q)
-
-        @constraint(model, (Qp - Qm)*F == P)
-        @constraint(model, (Qp + Qm)*w .<= umax)
-
-        optimize!(model)
-        
-        F = value(F)
-        K = value.(K)
-        H = value.(Hp) - value.(Hm)
-        L1 = value.(L1p) - value.(L1m)
-        L2 = value.(L2p) - value.(L2m)
-        print(termination_status(model))
-
-        # retorna um dicionário com matrizes F, K, H e L
-        result = Dict("F" => F, "K" => K, "H" => H, "L1" => L1, "L2" => L2, "G" => G)
-
-        return result
     end
 
     @variable(model, 0 <= H[1:f, 1:f] <= 100)
@@ -192,12 +138,16 @@ function step2_saturation(A, B, X, G, umax, umin, d; f = 4, v=8, lambda=0.99, sy
     @variable(model, 0 <= Q1[1:1, 1:f] <= 100)
     @variable(model, 0 <= Q2[1:1, 1:f] <= 100)
 
+    # talvez ajude na otimização criar uma variavel auxiliar FK
+    @variable(model, FK[1:f, 1:n])
+    @constraint(model, FK == F*K)
+
     @constraint(model, H*F == F*(A + K))
     @constraint(model, L1*F == F*(B*G - K))
     @constraint(model, L2*F == F*(B*P - K))
-    @constraint(model, M*F == -(F*K)*(A - I(n)))
-    @constraint(model, N1*F == -(F*K)*(B*G))
-    @constraint(model, N2*F == -(F*K)*(B*P))
+    @constraint(model, M*F == -FK*(A - I(n)))
+    @constraint(model, N1*F == -FK*(B*G))
+    @constraint(model, N2*F == -FK*(B*P))
 
     @constraint(model, (H + L1 + d*(M + N1))*w .<= lambda * w)
     @constraint(model, (H + L1 + d*(M + N2))*w .<= lambda * w)
@@ -212,6 +162,8 @@ function step2_saturation(A, B, X, G, umax, umin, d; f = 4, v=8, lambda=0.99, sy
 
     @constraint(model, R*F == X)
     @constraint(model, R*w .<= q)
+
+    @objective(model, Max, sum(gamma)/v)
     
     optimize!(model)
 
@@ -227,4 +179,55 @@ function step2_saturation(A, B, X, G, umax, umin, d; f = 4, v=8, lambda=0.99, sy
     result = Dict("F" => F, "K" => K, "H" => H, "L1" => L1, "L2" => L2, "G" => G)
 
     return result
+
+
+    # if symetric
+    #     @variable(model, 0 <= Hp[1:f, 1:f])
+    #     @variable(model, 0 <= Hm[1:f, 1:f])
+    #     @variable(model, 0 <= L1p[1:f, 1:f])
+    #     @variable(model, 0 <= L1m[1:f, 1:f])
+    #     @variable(model, 0 <= L2p[1:f, 1:f])
+    #     @variable(model, 0 <= L2m[1:f, 1:f])
+    #     @variable(model, 0 <= Mp[1:f, 1:f])
+    #     @variable(model, 0 <= Mm[1:f, 1:f])
+    #     @variable(model, 0 <= N1p[1:f, 1:f])
+    #     @variable(model, 0 <= N1m[1:f, 1:f])
+    #     @variable(model, 0 <= N2p[1:f, 1:f])
+    #     @variable(model, 0 <= N2m[1:f, 1:f])
+    #     @variable(model, 0 <= Rp[1:x, 1:f])
+    #     @variable(model, 0 <= Rm[1:x, 1:f])
+    #     @variable(model, 0 <= Qp[1:1, 1:f])
+    #     @variable(model, 0 <= Qm[1:1, 1:f])
+    
+    #     @constraint(model, (Hp - Hm)*F == F*(A + K))
+    #     @constraint(model, (L1p - L1m)*F == F*(B*G - K))
+    #     @constraint(model, (L2p - L2m)*F == F*(B*P - K))
+    #     @constraint(model, (Mp - Mm)*F == -Y*(A - I(n)))
+    #     @constraint(model, (N1p - N1m)*F == -Y*(B*G))
+    #     @constraint(model, (N2p - N2m)*F == -Y*(B*P))
+    #     @constraint(model, ((Hp + Hm) + (L1p + L1m) + d*((Mp + Mm) + (N1p + N1m)))*w .<= lambda * w)
+    #     @constraint(model, ((Hp + Hm) + (L1p + L1m) + d*((Mp + Mm) + (N2p + N2m)))*w .<= lambda * w)
+    #     @constraint(model, ((Hp + Hm) + (L2p + L2m) + d*((Mp + Mm) + (N1p + N1m)))*w .<= lambda * w)
+    #     @constraint(model, ((Hp + Hm) + (L2p + L2m) + d*((Mp + Mm) + (N2p + N2m)))*w .<= lambda * w)
+
+    #     @constraint(model, (Rp - Rm)*F == X)
+    #     @constraint(model, (Rp + Rm)*w .<= q)
+
+    #     @constraint(model, (Qp - Qm)*F == P)
+    #     @constraint(model, (Qp + Qm)*w .<= umax)
+
+    #     optimize!(model)
+        
+    #     F = value(F)
+    #     K = value.(K)
+    #     H = value.(Hp) - value.(Hm)
+    #     L1 = value.(L1p) - value.(L1m)
+    #     L2 = value.(L2p) - value.(L2m)
+    #     print(termination_status(model))
+
+    #     # retorna um dicionário com matrizes F, K, H e L
+    #     result = Dict("F" => F, "K" => K, "H" => H, "L1" => L1, "L2" => L2, "G" => G)
+
+    #     return result
+    # end
 end

@@ -47,6 +47,7 @@ function mat_cond_iniciais_adm(A, Ad, F, d; symetric=true)
   
 end
 
+# utilizar o "!" e alterar a matrix diretamente, sem copia
 function elimred(G, ro)
     h = hrep(G, ro)
     p = polyhedron(h, CDDLib.Library())

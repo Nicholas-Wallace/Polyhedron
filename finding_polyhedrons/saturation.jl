@@ -111,22 +111,22 @@ function step2_saturation(A, B, X, G, umax, umin, d; f = 4, v=8, lambda=0.99, sy
     w = ones(f)
     q = ones(x)
 
-    vet = vet_eq_spc(v)
-    xt = ones(v)
+    #vet = vet_eq_spc(v)
+    #xt = ones(v)
 
     @variable(model, K[1:n, 1:n])
     @variable(model, F[1:f, 1:n])
     @variable(model, P[1:1, 1:n])
-    @variable(model, gamma[1:v] >= 0)
+    @variable(model, igamma >= 1)
     
 
     # TESTAR SEM E DEPOIS COM ISSO
     @variable(model, J[1:n, 1:f])
     @constraint(model, J*F == I(n))
 
-    for i in 1:v
-        @constraint(model, F * (gamma[i] * vet[i]) .<= w)
-    end
+    #for i in 1:v
+     #   @constraint(model, F * (gamma[i] * vet[i]) .<= w)
+    #end
 
     @variable(model, 0 <= H[1:f, 1:f] <= 100)
     @variable(model, 0 <= L1[1:f, 1:f] <= 100)
@@ -142,12 +142,28 @@ function step2_saturation(A, B, X, G, umax, umin, d; f = 4, v=8, lambda=0.99, sy
     @variable(model, FK[1:f, 1:n])
     @constraint(model, FK == F*K)
 
+    @variable(model, BG[1:n, 1:n])
+    @constraint(model, BG == B*G)
+
+
+    @variable(model, BP[1:n, 1:n])
+    @constraint(model, BP == B*P)
+
+    @variable(model, KA[1:n, 1:n])
+    @constraint(model, KA == K*(A- I(n)))
+
+    @variable(model, KG[1:n, 1:n])
+    @constraint(model, KG == K*BG)
+
+    @variable(model, KP[1:n, 1:n])
+    @constraint(model, KP == K*BP)
+
     @constraint(model, H*F == F*(A + K))
-    @constraint(model, L1*F == F*(B*G - K))
-    @constraint(model, L2*F == F*(B*P - K))
-    @constraint(model, M*F == -FK*(A - I(n)))
-    @constraint(model, N1*F == -FK*(B*G))
-    @constraint(model, N2*F == -FK*(B*P))
+    @constraint(model, L1*F == F*(BG - K))
+    @constraint(model, L2*F == F*(BP - K))
+    @constraint(model, M*F == -F*KA)
+    @constraint(model, N1*F == -F*KG)
+    @constraint(model, N2*F == -F*KP)
 
     @constraint(model, (H + L1 + d*(M + N1))*w .<= lambda * w)
     @constraint(model, (H + L1 + d*(M + N2))*w .<= lambda * w)
@@ -161,12 +177,17 @@ function step2_saturation(A, B, X, G, umax, umin, d; f = 4, v=8, lambda=0.99, sy
     @constraint(model, Q2*w .<= umin)
 
     @constraint(model, R*F == X)
-    @constraint(model, R*w .<= q)
+    @constraint(model, R*w .<= q*igamma)
 
-    @objective(model, Max, sum(gamma)/v)
+    pond = 0.00000001;
+
+    func_obj = igamma
+
+    @objective(model, Min, func_obj)
     
     optimize!(model)
 
+    igamma = value.(igamma)
     F = value.(F)
     G = value.(G)
     K = value.(K)

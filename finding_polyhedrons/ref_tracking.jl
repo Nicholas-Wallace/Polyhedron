@@ -8,15 +8,15 @@ function is_pinvariant_seg_ref(A, B, E, S, R; lambda=0.99, ll=6)
     n = size(A, 1); #Ordem do sistema (Linhas de A)
     m = size(B, 2); #Número de Entradas (Colunas de B)
     r = size(R, 1); #Número de linhas das restrições em r[k]
-    s = size(S, 1); #Número de linhsa da matriz das restrições de X[k]
+    s = size(S, 1); #Número de linhas da matriz das restrições de X[k]
 
     l = ones(ll)
     phi = ones(r)
     w = ones(s)
 
     @variable(model, 0 <= L[1:ll, 1:n] <= 100) #Poliedro que queremos achar
-    @variable(model, 0 <= H[1:ll,1:ll] <= 100)
-    @variable(model, 0 <= P[1:ll,1:r] <= 100)
+    @variable(model, 0 <= H[1:ll,1:ll] <= 100) #Farkas para A + BK
+    @variable(model, 0 <= P[1:ll,1:r] <= 100) #Farkas para E
     @variable(model, 0 <= M[1:s, 1:ll] <= 100) #Pra fazer a inclusão de L em S
     @variable(model, 0 <= J[1:n, 1:ll]) #Pseudo inversa
     @variable(model, K[1:1, 1:n]) #Ganhos do controlador

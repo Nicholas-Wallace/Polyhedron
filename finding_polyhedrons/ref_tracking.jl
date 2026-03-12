@@ -14,15 +14,18 @@ function is_pinvariant_seg_ref(A, B, E, S, R; lambda=0.99, ll=6)
     phi = ones(r)
     w = ones(s)
 
-    @variable(model, L[1:ll, 1:n]) #Poliedro que queremos achar
-    @variable(model, 0 <= H[1:ll,1:ll] <= 100) #Farkas para A + BK
-    @variable(model, 0 <= P[1:ll,1:r] <= 100) #Farkas para E
-    @variable(model, 0 <= M[1:s, 1:ll] <= 100) #Pra fazer a inclusão de L em S
+    upperb = 300
+    LKb = 500
+
+    @variable(model, -LKb <= L[1:ll, 1:n] <= LKb) #Poliedro que queremos achar
+    @variable(model, 0 <= H[1:ll,1:ll] <= upper) #Farkas para A + BK
+    @variable(model, 0 <= P[1:ll,1:r] <= upper) #Farkas para E
+    @variable(model, 0 <= M[1:s, 1:ll] <= upper) #Pra fazer a inclusão de L em S
     @variable(model, J[1:n, 1:ll]) #Pseudo inversa
-    @variable(model, K[1:1, 1:n]) #Ganhos do controlador
+    @variable(model, -LKb <= K[1:1, 1:n] <= LKb) #Ganhos do controlador
 
     @variable(model, igamma >= 1)
-    @variable(model, 0 <= r[1:ll, 1:s] <= 100)
+    @variable(model, 0 <= Z[1:ll, 1:s] <= upper)
 
     @objective(model, Min, igamma)
 
@@ -32,11 +35,22 @@ function is_pinvariant_seg_ref(A, B, E, S, R; lambda=0.99, ll=6)
     @constraint(model, J*L == I(n))
 
     # Restrições do igamma
-    @constraint(model, r*S == L)
-    @constraint(model, r*w .<= l*igamma)
+    @constraint(model, Z*S == L)
+    @constraint(model, Z*w .<= l*igamma)
     
     @constraint(model, H*l + P*phi .<= l*lambda)
     @constraint(model, M*l .<= w)
+
+    #0  Auto (Knitro escolhe sozinho).
+    #1: Active Set 
+    #2: Interior Point / CG
+    #3: Interior Point / Direct
+    #4: SQP (Programação Quadrática Sequencial)
+
+    set_optimizer_attribute(model, "outlev", 2)
+    set_optimizer_attribute(model, "algorithm", 1)
+    set_optimizer_attribute(model, "maxtime", 3600.0)
+    set_optimizer_attribute(model, "maxit", 10000)
 
     optimize!(model)
 

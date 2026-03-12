@@ -38,7 +38,7 @@ function  trajectory_delay(x0, A, Ad, passos, d, umax, umin)
   
   function sat(x, umax, umin)
     if x > umax return umax
-    else if x < umin return umin
+    elseif x < umin return umin
     else return x
     end
   end

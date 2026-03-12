@@ -18,14 +18,14 @@ function is_pinvariant_seg_ref(A, B, E, S, R; lambda=0.99, ll=6)
     LKb = 500
 
     @variable(model, -LKb <= L[1:ll, 1:n] <= LKb) #Poliedro que queremos achar
-    @variable(model, 0 <= H[1:ll,1:ll] <= upper) #Farkas para A + BK
-    @variable(model, 0 <= P[1:ll,1:r] <= upper) #Farkas para E
-    @variable(model, 0 <= M[1:s, 1:ll] <= upper) #Pra fazer a inclusão de L em S
+    @variable(model, 0 <= H[1:ll,1:ll] <= upperb) #Farkas para A + BK
+    @variable(model, 0 <= P[1:ll,1:r] <= upperb) #Farkas para E
+    @variable(model, 0 <= M[1:s, 1:ll] <= upperb) #Pra fazer a inclusão de L em S
     @variable(model, J[1:n, 1:ll]) #Pseudo inversa
     @variable(model, -LKb <= K[1:1, 1:n] <= LKb) #Ganhos do controlador
 
     @variable(model, igamma >= 1)
-    @variable(model, 0 <= Z[1:ll, 1:s] <= upper)
+    @variable(model, 0 <= Z[1:ll, 1:s] <= upperb)
 
     @objective(model, Min, igamma)
 

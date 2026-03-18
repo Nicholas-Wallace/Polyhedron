@@ -333,6 +333,10 @@ function step2_saturation(A, B, X, G, umax, umin, d; f = 4, lambda=0.99, symetri
         set_start_value(Q2[i,j], -umin[i]/2)
     end
 
+    BG_init = B * G; BP_init = B * P_init
+    KA_init = K_init * (A - I); KG_init = K_init * BG_init
+    KP_init = K_init * BP_init; FK_init = F_init * K_init
+
     for i in 1:n, j in 1:n
         set_start_value(BG[i,j], BG_init[i,j]); set_start_value(BP[i,j], BP_init[i,j])
         set_start_value(KA[i,j], KA_init[i,j]); set_start_value(KG[i,j], KG_init[i,j])
@@ -342,96 +346,62 @@ function step2_saturation(A, B, X, G, umax, umin, d; f = 4, lambda=0.99, symetri
         set_start_value(FK[i,j], FK_init[i,j])
     end
 
-    BG_init = B * G; BP_init = B * P_init
-    KA_init = K_init * (A - I); KG_init = K_init * BG_init
-    KP_init = K_init * BP_init; FK_init = F_init * K_init
+    @constraint(model, BG .== B*G)
+    @constraint(model, BP .== B*P)
+    @constraint(model, KA .== K*(A - I))
+    @constraint(model, KG .== K*BG)
+    @constraint(model, KP .== K*BP)
+    @constraint(model, FK .== F*K)
 
-    @constraint(model, H*F == F*(A + K))
-    @constraint(model, L1*F == F*(B*G - K))
-    @constraint(model, L2*F == F*(B*P - K))
-    @constraint(model, M*F == -FK*(A - I(n)))
-    @constraint(model, N1*F == -FK*(B*G))
-    @constraint(model, N2*F == -FK*(B*P))
+    @constraint(model, H*F .== F*A + FK)
+    @constraint(model, L1*F .== F*BG - FK)
+    @constraint(model, L2*F .== F*BP - FK)
+    @constraint(model, M*F .== -F*KA)
+    @constraint(model, N1*F .== -F*KG)
+    @constraint(model, N2*F .== -F*KP)
 
-    @constraint(model, (H + L1 + d*(M + N1))*w .<= lambda * w)
-    @constraint(model, (H + L1 + d*(M + N2))*w .<= lambda * w)
-    @constraint(model, (H + L2 + d*(M + N1))*w .<= lambda * w)
-    @constraint(model, (H + L2 + d*(M + N2))*w .<= lambda * w)
-
-    @constraint(model, Q1*F == P)
-    @constraint(model, Q2*F == -P)
-
+    @constraint(model, Q1*F .== P)
+    @constraint(model, Q2*F .== -P)
     @constraint(model, Q1*w .<= umax)
-    @constraint(model, Q2*w .<= umin)
+    @constraint(model, Q2*w .<= -umin)
 
-    @constraint(model, R*F == X)
+    @constraint(model, R*F .== X)
     @constraint(model, R*w .<= q)
 
-    @objective(model, Max, sum(gamma)/v)
+    @constraint(model, J * F .== I(n))
+
+    @constraint(model, jota*X .== F)
+    @constraint(model, jota*q .<= igama*w)
+
+    if symetric
+        @constraint(model, ((Hp + Hm) + (L1p + L1m) + d*((Mp + Mm) + (N1p + N1m)))*w .<= lambda * w)
+        @constraint(model, ((Hp + Hm) + (L1p + L1m) + d*((Mp + Mm) + (N2p + N2m)))*w .<= lambda * w)
+        @constraint(model, ((Hp + Hm) + (L2p + L2m) + d*((Mp + Mm) + (N1p + N1m)))*w .<= lambda * w)
+        @constraint(model, ((Hp + Hm) + (L2p + L2m) + d*((Mp + Mm) + (N2p + N2m)))*w .<= lambda * w)
+    else
+        @constraint(model, (H + L1 + d*(M + N1))*w .<= lambda * w)
+        @constraint(model, (H + L1 + d*(M + N2))*w .<= lambda * w)
+        @constraint(model, (H + L2 + d*(M + N1))*w .<= lambda * w)
+        @constraint(model, (H + L2 + d*(M + N2))*w .<= lambda * w)
+    end
+
+    @objective(model, Min, igama)
     
     optimize!(model)
 
-    F = value.(F)
-    G = value.(G)
-    K = value.(K)
-    H = value.(H)
-    L1 = value.(L1)
-    L2 = value.(L2)
+F_val = value.(F); K_val = value.(K); G_val = value.(G); P_val = value.(P)
+    H_val = symetric ? value.(Hp) - value.(Hm) : value.(H)
+    L1_val = symetric ? value.(L1p) - value.(L1m) : value.(L1)
+    L2_val = symetric ? value.(L2p) - value.(L2m) : value.(L2)
 
-    print(termination_status(model))
+    println(termination_status(model))
 
-    result = Dict("F" => F, "K" => K, "H" => H, "L1" => L1, "L2" => L2, "G" => G)
-
-    return result
-
-
-    # if symetric
-    #     @variable(model, 0 <= Hp[1:f, 1:f])
-    #     @variable(model, 0 <= Hm[1:f, 1:f])
-    #     @variable(model, 0 <= L1p[1:f, 1:f])
-    #     @variable(model, 0 <= L1m[1:f, 1:f])
-    #     @variable(model, 0 <= L2p[1:f, 1:f])
-    #     @variable(model, 0 <= L2m[1:f, 1:f])
-    #     @variable(model, 0 <= Mp[1:f, 1:f])
-    #     @variable(model, 0 <= Mm[1:f, 1:f])
-    #     @variable(model, 0 <= N1p[1:f, 1:f])
-    #     @variable(model, 0 <= N1m[1:f, 1:f])
-    #     @variable(model, 0 <= N2p[1:f, 1:f])
-    #     @variable(model, 0 <= N2m[1:f, 1:f])
-    #     @variable(model, 0 <= Rp[1:x, 1:f])
-    #     @variable(model, 0 <= Rm[1:x, 1:f])
-    #     @variable(model, 0 <= Qp[1:1, 1:f])
-    #     @variable(model, 0 <= Qm[1:1, 1:f])
-    
-    #     @constraint(model, (Hp - Hm)*F == F*(A + K))
-    #     @constraint(model, (L1p - L1m)*F == F*(B*G - K))
-    #     @constraint(model, (L2p - L2m)*F == F*(B*P - K))
-    #     @constraint(model, (Mp - Mm)*F == -Y*(A - I(n)))
-    #     @constraint(model, (N1p - N1m)*F == -Y*(B*G))
-    #     @constraint(model, (N2p - N2m)*F == -Y*(B*P))
-    #     @constraint(model, ((Hp + Hm) + (L1p + L1m) + d*((Mp + Mm) + (N1p + N1m)))*w .<= lambda * w)
-    #     @constraint(model, ((Hp + Hm) + (L1p + L1m) + d*((Mp + Mm) + (N2p + N2m)))*w .<= lambda * w)
-    #     @constraint(model, ((Hp + Hm) + (L2p + L2m) + d*((Mp + Mm) + (N1p + N1m)))*w .<= lambda * w)
-    #     @constraint(model, ((Hp + Hm) + (L2p + L2m) + d*((Mp + Mm) + (N2p + N2m)))*w .<= lambda * w)
-
-    #     @constraint(model, (Rp - Rm)*F == X)
-    #     @constraint(model, (Rp + Rm)*w .<= q)
-
-    #     @constraint(model, (Qp - Qm)*F == P)
-    #     @constraint(model, (Qp + Qm)*w .<= umax)
-
-    #     optimize!(model)
-        
-    #     F = value(F)
-    #     K = value.(K)
-    #     H = value.(Hp) - value.(Hm)
-    #     L1 = value.(L1p) - value.(L1m)
-    #     L2 = value.(L2p) - value.(L2m)
-    #     print(termination_status(model))
-
-    #     # retorna um dicionário com matrizes F, K, H e L
-    #     result = Dict("F" => F, "K" => K, "H" => H, "L1" => L1, "L2" => L2, "G" => G)
-
-    #     return result
-    # end
+    return Dict("F" => F_val,
+                "K" => K_val,
+                "P" => P_val,
+                "H" => H_val,
+                "L1" => L1_val,
+                "L2" => L2_val,
+                "G" => G_val,
+                "igama" => value(igama))    
 end

@@ -9,8 +9,8 @@ function step1_saturation(A, B, X, f; lambda=0.99, pond=0.5, symetric=true)
     set_optimizer_attribute(model, "opttol_abs", 1e-8)
     set_optimizer_attribute(model, "scale", 1)
     set_optimizer_attribute(model, "xtol_iters", 500)
-    set_optimizer_attribute(model, "ms_maxsolves", 10000)
-    set_optimizer_attribute(model, "outlev", 1)
+    set_optimizer_attribute(model, "ms_maxsolves", 1000)
+    set_optimizer_attribute(model, "outlev", 2)
     set_optimizer_attribute(model, "numthreads", 4)
     set_optimizer_attribute(model, "honorbnds", 1)
     set_optimizer_attribute(model, "ms_enable", 1)
@@ -215,48 +215,136 @@ end
 
 # FALTA IMPLEMENTAR MUDANÇAS FEITAS NO PASSO 1 E MOVER O IF PRA CIMA DEPOIS DE DESCOBRIR 
 # O QUE TEM DE ERRADO NO 1
-function step2_saturation(A, B, X, G, umax, umin, d; f = 4, v=8, lambda=0.99, symetric=true)
+function step2_saturation(A, B, X, G, umax, umin, d; f = 4, lambda=0.99, symetric=true)
     model = Model() do
         return NEOSServer.Optimizer(; email = "wallace.lopes.162@ufrn.edu.br", solver = "Knitro")
     end
 
-    # parâmetros
+    set_optimizer_attribute(model, "nlp_algorithm", 1)
+    set_optimizer_attribute(model, "feastol_abs", 1e-8)
+    set_optimizer_attribute(model, "opttol_abs", 1e-8)
+    set_optimizer_attribute(model, "scale", 1)
+    set_optimizer_attribute(model, "xtol_iters", 500)
+    set_optimizer_attribute(model, "ms_maxsolves", 10000)
+    set_optimizer_attribute(model, "outlev", 1)
+    set_optimizer_attribute(model, "honorbnds", 1)
+    set_optimizer_attribute(model, "ms_enable", 1)
+    set_optimizer_attribute(model, "ms_seed", 0)
 
+    # parâmetros
     n = size(A, 1) # ordem do sistema
     x = size(X, 1)
+    m = size(B, 2)
     w = ones(f)
     q = ones(x)
 
-    vet = vet_eq_spc(v)
-    xt = ones(v)
+    @variable(model, -100 <= K[1:n, 1:n] <= 100)
+    @variable(model, -100 <= F[1:f, 1:n] <= 100)
+    @variable(model, -100 <= P[1:m, 1:n] <= 100)
 
-    @variable(model, K[1:n, 1:n])
-    @variable(model, F[1:f, 1:n])
-    @variable(model, P[1:1, 1:n])
-    @variable(model, gamma[1:v] >= 0)
+    @variable(model, 0.001 <= igama <= 1000)
     
-
-    # TESTAR SEM E DEPOIS COM ISSO
     @variable(model, J[1:n, 1:f])
-    @constraint(model, J*F == I(n))
+    
+    @variable(model, 0 <= jota[1:f, 1:x] <= 100)
 
-    for i in 1:v
-        @constraint(model, F * (gamma[i] * vet[i]) .<= w)
+    @variable(model, 0 <= Q1[1:m, 1:f] <= 100)
+    @variable(model, 0 <= Q2[1:m, 1:f] <= 100)
+    @variable(model, 0 <= R[1:x, 1:f] <= 100)
+
+    if symetric
+        @variable(model, 0 <= Hp[1:f, 1:f] <= 100);  @variable(model, 0 <= Hm[1:f, 1:f] <= 100)
+        @variable(model, 0 <= L1p[1:f, 1:f] <= 100); @variable(model, 0 <= L1m[1:f, 1:f] <= 100)
+        @variable(model, 0 <= L2p[1:f, 1:f] <= 100); @variable(model, 0 <= L2m[1:f, 1:f] <= 100)
+        @variable(model, 0 <= Mp[1:f, 1:f] <= 100);  @variable(model, 0 <= Mm[1:f, 1:f] <= 100)
+        @variable(model, 0 <= N1p[1:f, 1:f] <= 100); @variable(model, 0 <= N1m[1:f, 1:f] <= 100)
+        @variable(model, 0 <= N2p[1:f, 1:f] <= 100); @variable(model, 0 <= N2m[1:f, 1:f] <= 100)
+
+        H = Hp - Hm; L1 = L1p - L1m; L2 = L2p - L2m; 
+        M = Mp - Mm; N1 = N1p - N1m; N2 = N2p - N2m
+    else
+        @variable(model, 0 <= H[1:f, 1:f] <= 100)
+        @variable(model, 0 <= L1[1:f, 1:f] <= 100)
+        @variable(model, 0 <= L2[1:f, 1:f] <= 100)
+        @variable(model, 0 <= M[1:f, 1:f] <= 100)
+        @variable(model, 0 <= N1[1:f, 1:f] <= 100)
+        @variable(model, 0 <= N2[1:f, 1:f] <= 100)
     end
 
-    @variable(model, 0 <= H[1:f, 1:f] <= 100)
-    @variable(model, 0 <= L1[1:f, 1:f] <= 100)
-    @variable(model, 0 <= L2[1:f, 1:f] <= 100)
-    @variable(model, 0 <= M[1:f, 1:f] <= 100)
-    @variable(model, 0 <= N1[1:f, 1:f] <= 100)
-    @variable(model, 0 <= N2[1:f, 1:f] <= 100)
-    @variable(model, 0 <= R[1:x, 1:f] <= 100)
-    @variable(model, 0 <= Q1[1:1, 1:f] <= 100)
-    @variable(model, 0 <= Q2[1:1, 1:f] <= 100)
+    @variable(model, -100 <= BG[1:n, 1:n] <= 100)
+    @variable(model, -100 <= BP[1:n, 1:n] <= 100)
+    @variable(model, -100 <= KA[1:n, 1:n] <= 100)
+    @variable(model, -100 <= KG[1:n, 1:n] <= 100)
+    @variable(model, -100 <= KP[1:n, 1:n] <= 100)
+    @variable(model, -100 <= FK[1:f, 1:n] <= 100)
 
-    # talvez ajude na otimização criar uma variavel auxiliar FK
-    @variable(model, FK[1:f, 1:n])
-    @constraint(model, FK == F*K)
+    set_start_value(igama, 10.0)
+
+    K_init = Matrix(0.1 * I(n))
+    P_init = fill(0.1, m, n)
+    F_init = zeros(f, n)
+
+    for i in 1:m, j in 1:n
+        set_start_value(P[i,j], P_init[i,j])
+    end
+
+    for i in 1:n, j in 1:n
+        set_start_value(K[i,j], K_init[i,j])
+    end
+
+    for i in 1:n, j in 1:f
+        set_start_value(J[i,j], 0.0)
+    end
+
+    for i in 1:f, j in 1:n
+        if i <= x
+            F_init[i,j] = X[i,j]
+            set_start_value(F[i,j], F_init[i,j])
+        else
+            val = i % 2 == 0 ? 0.01 : -0.01
+            F_init[i,j] = val
+            set_start_value(F[i,j], val)
+        end
+    end
+
+    for i in 1:x, j in 1:f
+        set_start_value(R[i,j], 0.01) 
+        set_start_value(jota[j,i], 0.1)
+    end
+
+    for i in 1:f, j in 1:f
+        diag = (i == j)
+        if symetric
+            set_start_value(Hp[i,j], diag ? 0.1 : 0.0);  set_start_value(Hm[i,j], 0.0)
+            set_start_value(L1p[i,j], diag ? 0.1 : 0.0); set_start_value(L1m[i,j], 0.0)
+            set_start_value(L2p[i,j], diag ? 0.1 : 0.0); set_start_value(L2m[i,j], 0.0)
+            set_start_value(Mp[i,j], diag ? 0.01 : 0.0); set_start_value(Mm[i,j], 0.0)
+            set_start_value(N1p[i,j], diag ? 0.01 : 0.0); set_start_value(N1m[i,j], 0.0)
+            set_start_value(N2p[i,j], diag ? 0.01 : 0.0); set_start_value(N2m[i,j], 0.0)
+        else
+            set_start_value(H[i,j], diag ? 0.1 : 0.0);   set_start_value(L1[i,j], diag ? 0.1 : 0.0)
+            set_start_value(L2[i,j], diag ? 0.1 : 0.0);  set_start_value(M[i,j], diag ? 0.01 : 0.0)
+            set_start_value(N1[i,j], diag ? 0.01 : 0.0); set_start_value(N2[i,j], diag ? 0.01 : 0.0)
+        end
+    end
+
+    for i in 1:m, j in 1:f
+        set_start_value(Q1[i,j], umax[i]/2)
+        set_start_value(Q2[i,j], -umin[i]/2)
+    end
+
+    for i in 1:n, j in 1:n
+        set_start_value(BG[i,j], BG_init[i,j]); set_start_value(BP[i,j], BP_init[i,j])
+        set_start_value(KA[i,j], KA_init[i,j]); set_start_value(KG[i,j], KG_init[i,j])
+        set_start_value(KP[i,j], KP_init[i,j])
+    end
+    for i in 1:f, j in 1:n
+        set_start_value(FK[i,j], FK_init[i,j])
+    end
+
+    BG_init = B * G; BP_init = B * P_init
+    KA_init = K_init * (A - I); KG_init = K_init * BG_init
+    KP_init = K_init * BP_init; FK_init = F_init * K_init
 
     @constraint(model, H*F == F*(A + K))
     @constraint(model, L1*F == F*(B*G - K))

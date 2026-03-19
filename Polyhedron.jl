@@ -34,6 +34,6 @@ export plot_poly, get_shape
 export Vertices, get_vertices, get_extreme_vertices, poly_projection
 export cond_iniciais_adm, mat_cond_iniciais_adm, elim_red, extended_F, extended_A, extended_A_Vector, allPossibleComb, admissable_initCond
 # falta outros.jl
-export trajectory_delay, trajectory, vet_eq_spc, trajectory_segref 
+export trajectory_delay, trajectory, vet_eq_spc, trajectory_segref, trajectory_delay_sat
 
 end

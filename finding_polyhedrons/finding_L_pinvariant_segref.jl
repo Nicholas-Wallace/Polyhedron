@@ -19,6 +19,10 @@ function finding_pinvariant_segref(A, B, E, S, R; lambda=0.99, ll=6)
         return NEOSServer.Optimizer(; email = "wallace.lopes.162@ufrn.edu.br", solver = "Knitro")
     end
 
+    set_optimizer_attribute(model, "outlev", 2)
+    set_optimizer_attribute(model, "ms_enable", 1)
+    set_optimizer_attribute(model, "ms_maxsolves", 100)
+
     #Parâmetros
     n = size(A, 1); #Ordem do sistema (Linhas de A)
     m = size(B, 2); #Número de Entradas (Colunas de B)
@@ -59,12 +63,7 @@ function finding_pinvariant_segref(A, B, E, S, R; lambda=0.99, ll=6)
     #3: Interior Point / Direct
     #4: SQP (Programação Quadrática Sequencial)
 
-    set_optimizer_attribute(model, "outlev", 2)
-    set_optimizer_attribute(model, "algorithm", 1)
-    set_optimizer_attribute(model, "maxtime", 3600.0)
-    set_optimizer_attribute(model, "maxit", 10000)
-    set_optimizer_attribute(model, "ms_enable", 1)
-    set_optimizer_attribute(model, "ms_maxsolves", 100)
+
 
     optimize!(model)
 

@@ -28,7 +28,7 @@ include("finding_polyhedrons/ref_tracking_delay.jl")
 include("trajectories/trajectory_segref.jl")
 
 
-export finding_L_pinvariant, finding_L_pinvariant_delay, finding_L_pinvariant_segref,step1_saturation, step2_saturation, is_pinvariant_seg_ref, is_pinvariant_seg_ref_delay
+export finding_L_pinvariant, finding_L_pinvariant_delay, finding_L_pinvariant_segref, finding_L_pinvariant_segref_delay,step1_saturation, step2_saturation, is_pinvariant_seg_ref	
 export is_pinvariant, is_pinvariant_delay
 export plot_poly, get_shape
 export Vertices, get_vertices, get_extreme_vertices, poly_projection

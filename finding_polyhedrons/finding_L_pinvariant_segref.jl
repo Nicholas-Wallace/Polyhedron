@@ -13,7 +13,7 @@
 
 ### Para o 
 
-function finding_pinvariant_segref(A, B, E, S, R; lambda=0.99, ll=6) 
+function finding_L_pinvariant_segref(A, B, E, S, R; lambda=0.99, ll=6) 
     
     model = Model() do
         return NEOSServer.Optimizer(; email = "wallace.lopes.162@ufrn.edu.br", solver = "Knitro")

@@ -19,7 +19,7 @@
 # T*ones_f .<= ones_f                                   ###
 ###########################################################
 
-function finding_pinvariant_segref(A, B, E, S, R, d; lambda=0.99, lf=6) 
+function finding_L_pinvariant_segref_delay(A, B, E, S, R, d; lambda=0.99, lf=6) 
     
     model = Model() do
         return NEOSServer.Optimizer(; email = "wallace.lopes.162@ufrn.edu.br", solver = "Knitro")
@@ -53,7 +53,7 @@ function finding_pinvariant_segref(A, B, E, S, R, d; lambda=0.99, lf=6)
     @objective(model, Min, igamma)
 
     @constraint(model, H*F == F*(A+K)) 
-    @constraint(model, L*F == F(BG - K))
+    @constraint(model, L*F == F*(B*G - K))
     @constraint(model, M*F == -F*K*(A-I))
     @constraint(model, N*F == -F*K*B*G)
     @constraint(model, T*F == S)

@@ -37,7 +37,7 @@ function finding_L_pinvariant_segref_delay(A, B, E, S, R, d; lambda=0.99, lf=6)
 
 
     @variable(model, K[1:n, 1:n]) #Variavel auxiliar trans model
-    @variable(model, G[1:1, 1:n]) #Ganho do controlador 
+    @variable(model, G[1:m, 1:n]) #Ganho do controlador 
     @variable(model, -500 <= F[1:lf,1:n] <= 500) #Poliedro que queremos achar
     @variable(model, 0 <= H[1:lf,1:lf] <= 300)
     @variable(model, 0 <= L[1:lf,1:lf] <= 300) #Farkas para A
@@ -57,13 +57,13 @@ function finding_L_pinvariant_segref_delay(A, B, E, S, R, d; lambda=0.99, lf=6)
     @constraint(model, M*F == -F*K*(A-I))
     @constraint(model, N*F == -F*K*B*G)
     @constraint(model, T*F == S)
-    @constraint(model, J*L == I(n))
+    @constraint(model, J*F == I(n))
 
     # Restrições do igamma
-    @constraint(model, Z*S == L)
-    @constraint(model, Z*ones_f .<= ones_s*igamma)
+    @constraint(model, Z*S == F)
+    @constraint(model, Z*ones_s .<= ones_f*igamma)
     
-    @constraint(model, (H + L + d*(M + N))*ones_f + P*ones_r .<= l*lambda)
+    @constraint(model, (H + L + d*(M + N))*ones_f + P*ones_r .<= ones_f*lambda)
     @constraint(model, T*ones_f .<= ones_s)
 
     #0  Auto (Knitro escolhe sozinho).

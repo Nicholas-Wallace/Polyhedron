@@ -19,27 +19,25 @@ function Vertices(vet ,n)
     return [Tuple(chunk) for chunk in chunks if length(chunk) == n]
 end
 
-# Não lembro se já ta tudo certinho, tem que revisar.
-function get_vertices(F, w, init_cond, init_cond_w, index)
+# ESSA FUNÇÃO RETORNA UMA TUPLA COM OS ESTADOS AGRUPADOS
+# DE ALGUM VÉRTICE DO POLIEDRO DE CONDIÇÕES INICIAIS ADMISSÍVEIS
+# "n" É A ORDEM DO SISTEMA E "i" É O ÍNDICE DO VÉRTICE A SER ESCOLHIDO
+
+function get_extVert_tuple(init_cond_F, init_cond_w, i, n)
     hrep_ic = hrep(init_cond, init_cond_w)
     P = vrep(polyhedron(hrep_ic, CDDLib.Library()))
 
     ext_vertices = collect(points(P))
-    ext_vertices_tuple = Tuple{Float64, Float64}[]
+    vertice_alvo = ext_vertices[i]
 
-    for i in 1:2:(length(vertices[index]))
-        push!(ext_vertices_tuple, (vertices[index][i], vertices[index][i+1]))
+    ext_vertices_tuple = Tuple[]
+
+    for i in 1:n:length(vertice_alvo)
+        estado = vertice_alvo[i : i + n - 1]
+        push!(ext_vertices_tuple, Tuple(estado))
     end
 
-    h_rep_F = hrep(vcat(F, -F), vcat(w, w))
-    iter = points(vrep(polyhedron(h_rep_F, CDDLib.Library())))
-
-    vertices_F = []
-    for vet in iter
-        push!(vertices_F, Tuple(vet))
-    end
-
-    return ext_vertices_tuple, vertices_F
+    return ext_vertices_tuple
 end
 
 function get_extreme_vertices(A, b, num_pontos=5)

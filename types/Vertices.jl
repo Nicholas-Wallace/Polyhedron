@@ -24,7 +24,7 @@ end
 # "n" É A ORDEM DO SISTEMA E "i" É O ÍNDICE DO VÉRTICE A SER ESCOLHIDO
 
 function get_extVert_tuple(init_cond_F, init_cond_w, i, n)
-    hrep_ic = hrep(init_cond, init_cond_w)
+    hrep_ic = hrep(init_cond_F, init_cond_w)
     P = vrep(polyhedron(hrep_ic, CDDLib.Library()))
 
     ext_vertices = collect(points(P))

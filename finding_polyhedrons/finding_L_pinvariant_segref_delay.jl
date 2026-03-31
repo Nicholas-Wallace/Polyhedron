@@ -1,4 +1,3 @@
-
 #############################################
 ### essa função é referente a um sistema: ###
 ###     x[k+1] = Ax(k) BGx(k-d) + Er(k)   ### 
@@ -31,7 +30,7 @@ function finding_L_pinvariant_segref_delay(A, B, E, S, R, d; lambda=0.99, lf=6, 
     #3: Interior Point / Direct
     #4: SQP (Programação Quadrática Sequencial)
 
-    set_optimizer_attribute(model, "nlp_algorithm", 1)
+    set_optimizer_attribute(model, "algorithm", 2)
     set_optimizer_attribute(model, "feastol_abs", 1e-8)
     set_optimizer_attribute(model, "opttol_abs", 1e-8)
     set_optimizer_attribute(model, "scale", 1)
@@ -64,12 +63,16 @@ function finding_L_pinvariant_segref_delay(A, B, E, S, R, d; lambda=0.99, lf=6, 
     @variable(model, FK[1:lf, 1:n])  # F*K
     @variable(model, KA[1:n, 1:n])  # K*(A-I)
     @variable(model, KBG[1:n, 1:n])  # K*B*G
+    @variable(model, FA[1:lf, 1:n])  # F*A
+    @variable(model, FBG[1:lf, 1:n])  # F*BG
 
     # Constraints for common auxiliary variables
     @constraint(model, BG .== B*G)
     @constraint(model, FK .== F*K)
     @constraint(model, KA .== K*(A - I(n)))
     @constraint(model, KBG .== K*BG)
+    @constraint(model, FA .== F*A)
+    @constraint(model, FBG .== F*BG)
     @constraint(model, J*F .== I(n))
 
     # --- Warm Start Initialization ---
@@ -94,11 +97,15 @@ function finding_L_pinvariant_segref_delay(A, B, E, S, R, d; lambda=0.99, lf=6, 
     FK_init = F_init * K_init
     KA_init = K_init * (A - I(n))
     KBG_init = K_init * BG_init
+    FA_init = F_init * A
+    FBG_init = F_init * BG_init
     
     set_start_value.(BG, BG_init)
     set_start_value.(FK, FK_init)
     set_start_value.(KA, KA_init)
     set_start_value.(KBG, KBG_init)
+    set_start_value.(FA, FA_init)
+    set_start_value.(FBG, FBG_init)
     
     if symmetric
         # Symmetric formulation: variables split into positive and negative parts
@@ -199,8 +206,8 @@ function finding_L_pinvariant_segref_delay(A, B, E, S, R, d; lambda=0.99, lf=6, 
         @constraint(model, ZSp .== Zp*S)
         @constraint(model, ZSm .== Zm*S)
 
-        @constraint(model, HFp .- HFm .== F*(A+K))
-        @constraint(model, LFp .- LFm .== F*(BG - K))
+        @constraint(model, HFp .- HFm .== FA + FK)
+        @constraint(model, LFp .- LFm .== FBG - FK)
         @constraint(model, MFp .- MFm .== -F*KA)
         @constraint(model, NFp .- NFm .== -F*KBG)
         @constraint(model, PRp .- PRm .== F*E)
@@ -265,8 +272,8 @@ function finding_L_pinvariant_segref_delay(A, B, E, S, R, d; lambda=0.99, lf=6, 
         @constraint(model, TF .== T*F)
         @constraint(model, ZS .== Z*S)
         
-        @constraint(model, HF .== F*(A+K))
-        @constraint(model, LF .== F*(BG - K))
+        @constraint(model, HF .== FA + FK)
+        @constraint(model, LF .== FBG - FK)
         @constraint(model, MF .== -F*KA)
         @constraint(model, NF .== -F*KBG)
         @constraint(model, PR .== F*E)

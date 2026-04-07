@@ -84,8 +84,27 @@ function finding_L_pinvariant_segref_delay(A, B, E, S, R, d; lambda=0.99, lf=10)
 
     F = value.(F)
     G = value.(G)
+    K = value.(K)
+    H = value.(H)
+    L = value.(L)
+    M = value.(M)
+    N = value.(N)
+    P = value.(P)
+    T = value.(T)
+    J = value.(J)
 
-    result = Dict("F" => F, "G" => G)
+
+    result = Dict(
+    "F" => F,
+    "G" => G,
+    "K" => K,
+    "H" => H,
+    "L" => L,
+    "M" => M,
+    "N" => N,
+    "P" => P,
+    "T" => T,
+    "J" => J)
 
     print(termination_status(model))
 

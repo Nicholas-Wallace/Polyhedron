@@ -190,7 +190,7 @@ function finding_L_pinvariant_segref_delay2(A, B, S, d; a=0.5, lf=10, tmax=3600.
     @constraint(model, Z*S .== F)
     @constraint(model, Z*ones_s .<= ones_f*igamma)
     
-    # 3. Nova Desigualdade Principal (Somando 1-lambda dos dois lados)
+    # 3. Nova Desigualdade Principal
     @constraint(model, (H + L + d*(M + N))*ones_f .<= ones_f*lambda)
     @constraint(model, T*ones_f .<= ones_s)
 

@@ -19,7 +19,7 @@
 # T*ones_f .<= ones_f                                   ###
 ###########################################################
 
-function finding_L_pinvariant_segref_delay(A, B, E, S, R, d; lambda=0.99, lf=10) 
+function finding_L_pinvariant_segref_delay(A, B, E, S, R, d; lambda=0.99, time=10, lf=10) 
     
     model = Model() do
         return NEOSServer.Optimizer(; email = "wallace.lopes.162@ufrn.edu.br", solver = "Knitro")
@@ -75,7 +75,7 @@ function finding_L_pinvariant_segref_delay(A, B, E, S, R, d; lambda=0.99, lf=10)
 
     set_optimizer_attribute(model, "outlev", 2)
     set_optimizer_attribute(model, "algorithm", 1)
-    set_optimizer_attribute(model, "maxtime", 3600.0)
+    set_optimizer_attribute(model, "maxtime", time*60.0)
     set_optimizer_attribute(model, "maxit", 10000)
     set_optimizer_attribute(model, "ms_enable", 1)
     set_optimizer_attribute(model, "ms_maxsolves", 100)

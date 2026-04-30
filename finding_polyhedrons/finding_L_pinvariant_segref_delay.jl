@@ -287,7 +287,7 @@ function finding_L_pinvariant_segref_delay2(A, B, S, d; a=0.5, time=10, lf=10)
     return result
 end
 
-function finding_L_pinvariant_segref_delay_sim(A, B, E, S, R, d; lambda=0.99, time=10, lf=10) 
+function finding_L_pinvariant_segref_delay_sim(A, B, E, S, R, V, d; lambda=0.99, time=10, lf=10) 
     
     model = Model() do
         return NEOSServer.Optimizer(; email = "wallace.lopes.162@ufrn.edu.br", solver = "Knitro")
@@ -298,10 +298,12 @@ function finding_L_pinvariant_segref_delay_sim(A, B, E, S, R, d; lambda=0.99, ti
     m = size(B, 2); #Número de Entradas (Colunas de B)
     r = size(R, 1); #Número de linhas das restrições em r[k]
     s = size(S, 1); #Número de linhas da matriz das restrições de X[k]
+    v = size(V, 1); 
 
     ones_f = ones(lf)
     ones_r = ones(r)
     ones_s = ones(s)
+    ones_v = ones(v)
 
 
     @variable(model, K[1:n, 1:n]) #Variavel auxiliar trans model
@@ -321,10 +323,11 @@ function finding_L_pinvariant_segref_delay_sim(A, B, E, S, R, d; lambda=0.99, ti
     @variable(model, 0 <= Tm[1:s, 1:lf] <= 300)
     @variable(model, 0 <= Zp[1:lf, 1:s] <= 300)
     @variable(model, 0 <= Zm[1:lf, 1:s] <= 300)
+    @variable(model, 0 <= Up[1:v, 1:lf] <= 300)
+    @variable(model, 0 <= Um[1:v, 1:lf] <= 300)
     @variable(model, J[1:n, 1:lf]) #Pseudo inversa
 
     @variable(model, igamma >= 1)
-    @variable(model, 0 <= Z[1:lf, 1:s] <= 300)
 
     @objective(model, Min, igamma)
 
@@ -339,6 +342,10 @@ function finding_L_pinvariant_segref_delay_sim(A, B, E, S, R, d; lambda=0.99, ti
     # Restrições do igamma
     @constraint(model, (Zp - Zm)*S == F)
     @constraint(model, (Zp + Zm)*ones_s .<= ones_f*igamma)
+
+    # Inclusão do poliedro dos estados no poliedro das restrições do u[k]
+    @constraint(model, (Up - Um)*F == V*G)
+    @constraint(model, (Up + Um)*ones_f .<= ones_v)
     
     @constraint(model, ((Hp + Hm) + (Lp + Lm) + d*((Mp + Mm) + (Np + Nm)))*ones_f + (Pp + Pm)*ones_r .<= ones_f*lambda)
     @constraint(model, (Tp + Tm)*ones_f .<= ones_s)
@@ -374,6 +381,8 @@ function finding_L_pinvariant_segref_delay_sim(A, B, E, S, R, d; lambda=0.99, ti
     Tm = value.(Tm)
     Zp = value.(Zp)
     Zm = value.(Zm)
+    Up = value.(Up)
+    Um = value.(Um)
     K = value.(K)
     J = value.(J)
 
@@ -382,10 +391,11 @@ function finding_L_pinvariant_segref_delay_sim(A, B, E, S, R, d; lambda=0.99, ti
                   "P_diff" => Pp - Pm, "T_diff" => Tp - Tm, "Z_diff" => Zp - Zm,
                   "H_sum" => Hp + Hm, "L_sum" => Lp + Lm, "M_sum" => Mp + Mm, "N_sum" => Np + Nm,
                   "P_sum" => Pp + Pm, "T_sum" => Tp + Tm, "Z_sum" => Zp + Zm,
+                  "U_diff" => Up - Um, "U_sum" => Up + Um,
                   "Hp" => Hp, "Hm" => Hm, "Lp" => Lp, "Lm" => Lm, 
                   "Mp" => Mp, "Mm" => Mm, "Np" => Np, "Nm" => Nm,
                   "Pp" => Pp, "Pm" => Pm, "Tp" => Tp, "Tm" => Tm, 
-                  "Zp" => Zp, "Zm" => Zm)
+                  "Zp" => Zp, "Zm" => Zm, "Up" => Up, "Um" => Um)
 
     # Salvar matrizes em arquivo (valores simétricos como a diferença)
     open("results_pinvariant_segref_delay_sim.txt", "w") do io
@@ -435,7 +445,11 @@ function finding_L_pinvariant_segref_delay_sim(A, B, E, S, R, d; lambda=0.99, ti
         println(io, "=== Matriz Z (diferença Zp - Zm) ===")
         writedlm(io, Zp - Zm)
         println(io, "")
-        
+
+        println(io, "=== Matriz U (diferença Up - Um) ===")
+        writedlm(io, Up - Um)
+        println(io, "")
+
         println(io, "=== Valores de H em valor absoluto (Hp + Hm) ===")
         writedlm(io, Hp + Hm)
         println(io, "")
@@ -462,6 +476,10 @@ function finding_L_pinvariant_segref_delay_sim(A, B, E, S, R, d; lambda=0.99, ti
         
         println(io, "=== Valores de Z em valor absoluto (Zp + Zm) ===")
         writedlm(io, Zp + Zm)
+        println(io, "")
+
+        println(io, "=== Valores de U em valor absoluto (Up + Um) ===")
+        writedlm(io, Up + Um)
         println(io, "")
     end
 

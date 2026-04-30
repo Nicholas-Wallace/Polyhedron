@@ -352,7 +352,7 @@ function finding_L_pinvariant_segref_delay_sim(A, B, E, S, R, d; lambda=0.99, ti
     set_optimizer_attribute(model, "maxtime", time*60)
     set_optimizer_attribute(model, "maxit", 10000)
     set_optimizer_attribute(model, "ms_enable", 1)
-    set_optimizer_attribute(model, "ms_maxsolves", 100)
+    set_optimizer_attribute(model, "ms_maxsolves", 100000)
 
     optimize!(model)
 

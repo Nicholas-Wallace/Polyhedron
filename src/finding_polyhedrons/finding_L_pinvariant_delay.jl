@@ -3,7 +3,7 @@ finding_L_pinvariant_delay(A, B, X, f; d = 0) -> Dict{String, Matrix{Float}}
 
 Procuramos um poliedro de f linhas que seja invariante w.r.t
 
-    x[k+1] = A*x[k] + BG*x[k]
+    x[k+1] = A*x[k] + BG*x[k - d]
 
 G é o ganho do controlador
 X é o poliedro de restrições 

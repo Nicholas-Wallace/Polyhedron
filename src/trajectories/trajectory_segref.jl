@@ -1,8 +1,10 @@
-#############################################
-### essa função é referente a um sistema: ###
-###     x[k+1] = A*x(k) + Er(k)     ### 
-#############################################
+"""
+    trajectory_segref(x0, A, E, r, passos) -> Vector{Float}
 
+Simula a trajetória w.r.t
+
+    x[k+1] = A*x(k) + Er(k)
+"""
 function trajectory_segref(x0, A, E, r, passos)
     for i in range(2, passos)
         try
@@ -14,6 +16,17 @@ function trajectory_segref(x0, A, E, r, passos)
     end
     return x0   
 end
+
+"""
+    trajectory_segref_delay(x0, A, BG, E, r, passos, d; varying=false, reverse=true) -> Vector{Float}
+
+Simula a trajetória w.r.t
+
+    x[k+1] = A*x(k) + BG*x[k - d] + Er(k)
+
+Admite atraso de tamanho d
+
+"""
 
 function trajectory_segref_delay(x0, A, BG, E, r, passos, d; varying=false, reverse=true)
     # Como o vetor vem na forma [x[k]...x[k-d]] para plotar a trajetória

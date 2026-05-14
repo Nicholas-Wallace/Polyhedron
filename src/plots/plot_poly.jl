@@ -1,5 +1,10 @@
+"""
+    plot_poly(inq_matrix, w) -> Plot
 
-# inq_matrix <= w
+plota um poliedro definido pela inequação
+
+    inq_matrix <= w
+"""
 function plot_poly(inq_matrix, w)
     poly_F = get_shape(inq_matrix, w)
     

@@ -7,6 +7,8 @@ Verifica se o poliedro X é p-invariante w.r.t
     x[k+1] = A*x[k] + B*u[k]
     y[k+1] = C*x[k]
 
+E retrona o valor de lambda
+
 Essa função suporta realimentação de estado e de saída
 
 X é o poliedro a ser verificado

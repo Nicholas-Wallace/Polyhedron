@@ -4,7 +4,9 @@
 
 Verifica se o poliedro F é p-invariante w.r.t
 
- x[k+1] = A*x[k] + Ad*x[k - d]
+    x[k+1] = A*x[k] + Ad*x[k - d]
+
+E retorna um dicionario com todas as matrizes relevantes e o lambda
 
 Onde d é o tamanho do atraso
 """

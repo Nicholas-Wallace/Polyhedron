@@ -1,5 +1,19 @@
 
-function is_pinvariant(A, B, C, U, X; SOF = false, d = 0) 
+"""
+    is_pinvariant(A, B, C, U, X; SOF = false) -> Float
+
+Verifica se o poliedro X é p-invariante w.r.t
+
+    x[k+1] = A*x[k] + B*u[k]
+    y[k+1] = C*x[k]
+
+Essa função suporta realimentação de estado e de saída
+
+X é o poliedro a ser verificado
+U é a restrição na entrada
+"""
+
+function is_pinvariant(A, B, C, U, X; SOF = false) 
     
     model = Model() do
         return NEOSServer.Optimizer(; email = "wallace.lopes.162@ufrn.edu.br", solver = "Knitro")

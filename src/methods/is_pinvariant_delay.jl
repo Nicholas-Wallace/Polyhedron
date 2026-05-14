@@ -1,4 +1,14 @@
 
+"""
+    is_pinvariant_delay(A, Ad, F; d=0, symetric=true) -> Dict{String, Float}
+
+Verifica se o poliedro F é p-invariante w.r.t
+
+ x[k+1] = A*x[k] + Ad*x[k - d]
+
+Onde d é o tamanho do atraso
+"""
+
 function is_pinvariant_delay(A, Ad, F; d=0, symetric=true)
     model = Model() do
         return NEOSServer.Optimizer(; email = "wallace.lopes.162@ufrn.edu.br", solver = "Knitro")

@@ -1,23 +1,31 @@
 
-#############################################
-### essa função é referente a um sistema: ###
-###     x[k+1] = Ax(k) BGx(k-d) + Er(k)   ### 
-#############################################
+"""
+    finding_L_pinvariant_segref_delay(A, B, E, S, R, d; lambda=0.99, time=10, lf=10) -> Dict{String, Matrix}
 
+Procuramos um poliedro de f linhas que seja invariante w.r.t
 
-###        Farkas para o poliedro ser invaiante         ###
-# H*F == F(A+K)                                         ###
-# L*F == F(BG - K)                                      ###
-# M*F == -FK(A -I)                                      ###
-# N*F == -FKBG                                          ###
-# P*R == F*E                                            ###    
-# (H + L + d(M+N))*ones_f + P*ones_r .<= lambda*ones_f  ###
-#                                                       ###
-###  Para estar contido em S (poliedro das restricoes)  ###
-#                                                       ###
-# T*F == S                                              ###
-# T*ones_f .<= ones_f                                   ###
-###########################################################
+    x[k+1] = Ax(k) BGx(k-d) + Er(k)
+
+G é o ganho do controlador
+S é o poliedro de restrições 
+
+Retorna um dicionario com:
+o poliedro encontrado, a matriz de ganho
+lambda e todas as matrizes utilizadas no problema de otimização 
+
+Farkas para o poliedro ser invaiante
+H*F == F(A+K)                                         
+L*F == F(BG - K)                                      
+M*F == -FK(A -I)                                      
+N*F == -FKBG                                          
+P*R == F*E                                                
+(H + L + d(M+N))*ones_f + P*ones_r .<= lambda*ones_f  
+                                                      
+Para estar contido em S (poliedro das restricoes)  
+                                                      
+T*F == S                                              
+T*ones_f .<= ones_f                                   
+"""
 
 function finding_L_pinvariant_segref_delay(A, B, E, S, R, d; lambda=0.99, time=10, lf=10) 
     

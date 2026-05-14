@@ -1,3 +1,18 @@
+""" 
+finding_L_pinvariant_delay(A, B, X, f; d = 0) -> Dict{String, Matrix{Float}}
+
+Procuramos um poliedro de f linhas que seja invariante w.r.t
+
+    x[k+1] = A*x[k] + BG*x[k]
+
+G é o ganho do controlador
+X é o poliedro de restrições 
+
+Retorna um dicionario com:
+o poliedro encontrado, a matriz de ganho
+lambda e todas as matrizes utilizadas no problema de otimização 
+"""
+
 function finding_L_pinvariant_delay(A, B, X, f; d = 0)
     model = Model() do
         return NEOSServer.Optimizer(; email = "wallace.lopes.162@ufrn.edu.br", solver = "Knitro")

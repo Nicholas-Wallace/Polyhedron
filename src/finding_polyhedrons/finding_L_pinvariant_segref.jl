@@ -1,17 +1,17 @@
+"""
+    finding_L_pinvariant_segref_delay(A, B, E, S, R, d; lambda=0.99, time=10, lf=10) -> Dict{String, Matrix}
 
-#############################################
-### essa função é referente a um sistema: ###
-###     x[k+1] = (A + BK)x(k) + Er(k)     ### 
-#############################################
+Procuramos um poliedro de f linhas que seja invariante w.r.t
 
+    x[k+1] = (A + BK)x(k) + Er(k)
 
-### Farkas para o poliedro ser invaiante ###
-# H*L == (A+BK)                            #
-# P*R == L*E                               #
-# H*w + P*phi .<= lambda*w                 #
-############################################
+K é o ganho do controlador
+S é o poliedro de restrições 
 
-### Para o 
+Retorna um dicionario com:
+o poliedro encontrado, a matriz de ganho
+lambda e todas as matrizes utilizadas no problema de otimização 
+"""
 
 function finding_L_pinvariant_segref(A, B, E, S, R; lambda=0.99, ll=6) 
     
@@ -67,10 +67,22 @@ function finding_L_pinvariant_segref(A, B, E, S, R; lambda=0.99, ll=6)
 
     optimize!(model)
 
+    lambda = value.(lambda)
     L = value.(L)
-    K = value.(K)
+    H = value.(H)
+    P = value.(P)
+    M = value.(M)
+    J = value.(J)
 
-    result = Dict("L" => L, "K" => K)
+    result = Dict(
+    "F" => F,
+    "H" => H,
+    "P" => P,
+    "M" => M,
+    "J" => J, 
+    )
+
+    result = Dict("lambda" => lambda, "L" => L, "H" => H, "P" => P, "M" => M, "J" => J)
 
     print(termination_status(model))
 

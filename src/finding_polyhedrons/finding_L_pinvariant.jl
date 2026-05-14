@@ -1,5 +1,20 @@
+"""
+    finding_L_pinvariant(A, B, C, U, X; SOF = false, ll = 6, t = 8, pond = 0.02) -> Dict{String, Matrix}
 
-function finding_L_pinvariant(A, B, C, U, X; SOF = false, ll = 6, t = 8, pond = 0.02, d = 0)
+Procuramos um poliedro de f linhas que seja invariante w.r.t
+
+    x[k+1] = A*x(k) + B*u[k]
+
+X é o poliedro de restrições 
+
+Essa função suporta realimentação de estado e de saída
+
+Retorna um dicionario com:
+o poliedro encontrado, a matriz de ganho
+lambda e todas as matrizes utilizadas no problema de otimização 
+"""
+
+function finding_L_pinvariant(A, B, C, U, X; SOF = false, ll = 6, t = 8, pond = 0.02)
     model = Model() do
         return NEOSServer.Optimizer(; email = "wallace.lopes.162@ufrn.edu.br", solver = "Knitro")
     end

@@ -1,4 +1,4 @@
-module Poly
+module Polyhedron
 
 using LinearAlgebra, DelimitedFiles, JuMP, HiGHS, NEOSServer, Polyhedra, CDDLib, Base.Iterators, Plots
 

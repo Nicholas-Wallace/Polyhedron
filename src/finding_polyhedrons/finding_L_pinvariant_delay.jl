@@ -1,5 +1,5 @@
 """ 
-finding_L_pinvariant_delay(A, B, X, f; d = 0) -> Dict{String, Matrix{Float}}
+    finding_L_pinvariant_delay(A, B, X, f; d = 0) -> Dict{String, Matrix{Float}}
 
 Procuramos um poliedro de f linhas que seja invariante w.r.t
 

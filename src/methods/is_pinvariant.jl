@@ -7,7 +7,7 @@ Verifica se o poliedro X é p-invariante w.r.t
     x[k+1] = A*x[k] + B*u[k]
     y[k+1] = C*x[k]
 
-E retrona o valor de lambda
+E retorna o valor de lambda
 
 Essa função suporta realimentação de estado e de saída
 
@@ -64,6 +64,7 @@ function is_pinvariant(A, B, C, U, X; SOF = false)
 
     print(termination_status(model))
 
+    # padronizar para retornar dicionario com matrizes envolvidas
     # retorna o resultado da otimização, de forma que se lambda > 1 -> o poliedro não é PI
     return lambda
 

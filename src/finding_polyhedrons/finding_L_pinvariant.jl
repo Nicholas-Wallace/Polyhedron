@@ -90,6 +90,7 @@ function finding_L_pinvariant(A, B, C, U, X; SOF = false, ll = 6, t = 8, pond = 
 
     hrep_L = hrep(L, xl)
 
+    # mudar o tipo de retorno para dicionario com as matrizes envolvidas
     # retorna um poliedro do tipo polyhedron da biblioteca Polyhedra (útil para transitar entre as hrep e vrep)
     return polyhedron(hrep_L, CDDLib.Library())
 end

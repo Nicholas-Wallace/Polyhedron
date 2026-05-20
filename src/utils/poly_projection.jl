@@ -1,3 +1,18 @@
+"""
+    poly_projection(Gb) -> Matrix{Float64}
+
+    Gera e retorna a matriz T para realizar a projeção de um poliedro definido por:
+
+        F * x <= 1
+    
+    Onde `Gb` é a matriz formada pelas colunas de F que vão ser descartadas na projeção.
+
+    O novo poliedro é definido por:
+
+        T * F2 * x <= T * 1
+
+    Onde F2 é a matriz formada pelas colunas de F que vão ser mantidas na projeção.
+"""
 function poly_projection(Gb)
     gb, u = size(Gb)
 

@@ -1,6 +1,10 @@
 
-# cria um conjunto de vetores igualmente espaçados
-# função auxiliar para o enl(.) dos problemas de otimização bilineares
+"""
+    vet_eq_spc(n) -> Array{Vector{Float64}}
+
+    Gera e retorna um vetor de n vetores unitários igualmente espaçados em um círculo
+"""
+
 function vet_eq_spc(n)
     angle = 2*pi/n
 

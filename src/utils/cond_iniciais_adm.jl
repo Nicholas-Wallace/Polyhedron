@@ -111,6 +111,27 @@ function allPossibleComb(j, dm)
     return collect(Iterators.product(ranges...))
 end
 
+"""
+    admissable_initCond(A, Ad, F, dm, w; symetric=false, fixed_d=false) -> Matrix{Float64}, Vector{Float64}
+    
+    Gera a matriz de condições iniciais admissíveis para o sistema:
+
+        x[k+1] = A * x[k] + Ad * x[k-d(k)]
+
+    Onde d(k) é o delay, que pode ser fixo ou variável.
+
+    E para o poliedro: 
+
+        F * x <= w
+
+    `dm` é o maior delay possível tal que o poliedro ainda seja invariante.
+    A flag `symetric` controla se a matriz de condições iniciais deve ser simétrica, concatenando verticalmente ela
+    com sua versão negativa.
+    A flag `fixed_d` é para indicar se o sistema é com delay fixo ou variável
+
+    Retorna a matriz de condições iniciais admissíveis e o vetor de limites correspondentes.
+"""
+
 function admissable_initCond(A, Ad, F, dm, w; symetric=false, fixed_d=false)
     ext_F = extended_F(F, dm)
     ext_w = repeat(w, dm + 1)

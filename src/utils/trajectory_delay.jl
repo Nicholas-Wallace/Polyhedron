@@ -1,3 +1,20 @@
+"""
+    trajectory_delay(x0, A, B, G, passos, d; varying=false, reverse=true) -> Vector{Tuple{Float64}}
+
+    Gera a trajetoria dos estados de um sistema com delay do tipo:
+
+        x[k+1] = A*x[k] + B*G*x[k-d]
+
+    `x0` é o vetor de condições iniciais e deve estar como Vector{Tuple{Float64}}, e na ordem
+    [x[k-d]...x[k]]
+    `G` é a matriz de ganho do controlador
+    `varying` é uma flag para indicar se o delay é variável ou fixo
+    `reverse` é uma flag para indicar se o vetor de condições iniciais deve ser invertido
+    para ficar na ordem correta.
+
+    Retorna a trajetória sem as condições iniciais.
+"""
+
 function trajectory_delay(x0, A, Ad, passos, d; varying=false, reverse=true)
     # Como o vetor vem na forma [x[k]...x[k-d]] para plotar a trajetória
     # é melhor que esteja na ordem cronológica [x[k-d]...x[k]]

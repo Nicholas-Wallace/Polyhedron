@@ -59,11 +59,30 @@ Teste um exemplo para ver se está funcionando:
 using Polyhedron
 ```
 
-Agora vamos verificar se um poliedro é invariante para um sistema LIT
+Vamos declarar um sistema LIT
 
 ```julia
 A = [1 1; 0 1]
 B = [2; 1]
 C = [1 0]
-X = [0 0.8; 1 0; -1 0; 0 -1] 
+X = [0.8 0; 0 1; -1 0; 0 -1]
+U = [1.2; -1.5]
+```
+
+Agora procuramos um poliedro invariate
+
+```julia
+result = Polyhedron.finding_L_pinvariant(A, B, C, U, X)
+```
+
+E plotamos o resultado
+
+```julia
+L = result["L"]
+Polyhedron.plot_poly(L, ones(6))
+```
+
+
+
+
 

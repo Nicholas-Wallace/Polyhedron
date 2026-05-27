@@ -1,4 +1,4 @@
-function step1_saturation_segref(A, B, E, S, R, V; f=12, lambda=0.99, pond=0.5, symetric=true)
+function step1_saturation_segref(A, B, E, S, R, V; f=12, lambda=0.99, pond=0.5, symetric=true, time=20)
     model = Model() do
         return NEOSServer.Optimizer(; email = "wallace.lopes.162@ufrn.edu.br", solver = "Knitro")
     end
@@ -10,6 +10,7 @@ function step1_saturation_segref(A, B, E, S, R, V; f=12, lambda=0.99, pond=0.5, 
     set_optimizer_attribute(model, "outlev", 2)
     set_optimizer_attribute(model, "ms_enable", 1)
     set_optimizer_attribute(model, "ms_maxsolves", 100)
+    set_optimizer_attribute(model, "maxtime", time*60)
 
     # Parâmetros
     n = size(A, 1)       # Ordem do sistema
@@ -113,7 +114,7 @@ function step1_saturation_segref(A, B, E, S, R, V; f=12, lambda=0.99, pond=0.5, 
     return Dict("d" => value(d), "igamma" => value(igamma), "F" => value.(F), "G" => value.(G), "Pref" => value.(Pref))
 end
 
-function step2_saturation_segref(A, B, E, S, R, V, G, umax, umin, d; f=12, lambda=0.99, symetric=true)
+function step2_saturation_segref(A, B, E, S, R, V, G, umax, umin, d; f=12, lambda=0.99, symetric=true, time=20)
     model = Model() do
         return NEOSServer.Optimizer(; email = "wallace.lopes.162@ufrn.edu.br", solver = "Knitro")
     end
@@ -123,6 +124,7 @@ function step2_saturation_segref(A, B, E, S, R, V, G, umax, umin, d; f=12, lambd
     set_optimizer_attribute(model, "opttol_abs", 1e-8)
     set_optimizer_attribute(model, "outlev", 1)
     set_optimizer_attribute(model, "ms_enable", 1)
+    set_optimizer_attribute(model, "maxtime", time*60)
 
     # Parâmetros
     n = size(A, 1)

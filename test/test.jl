@@ -1,3 +1,0 @@
-using Polyhedron 
-
-println("hey")

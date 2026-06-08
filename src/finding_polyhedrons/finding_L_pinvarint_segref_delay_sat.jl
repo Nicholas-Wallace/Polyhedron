@@ -1,4 +1,4 @@
-function step1_saturation_segref(A, B, E, S, R, V; f=12, lambda=0.99, pond=0.5, symetric=true, time=20)
+function step1_saturation_segref(A, B, E, S, R; f=12, lambda=0.99, pond=0.5, symetric=true, time=20)
     model = Model() do
         return NEOSServer.Optimizer(; email = "wallace.lopes.162@ufrn.edu.br", solver = "Knitro")
     end
@@ -17,12 +17,10 @@ function step1_saturation_segref(A, B, E, S, R, V; f=12, lambda=0.99, pond=0.5, 
     m = size(B, 2)       # Entradas de controle
     s = size(S, 1)       # Linhas de restrição de estado
     r = size(R, 1)       # Linhas de restrição de referência
-    v = size(V, 1)       # Linhas de restrição de controle
 
     ones_f = ones(f)
     ones_s = ones(s)
     ones_r = ones(r)
-    ones_v = ones(v)
 
     # Variáveis Principais
     @variable(model, 1 <= d <= 100) 
@@ -40,9 +38,6 @@ function step1_saturation_segref(A, B, E, S, R, V; f=12, lambda=0.99, pond=0.5, 
         @variable(model, 0 <= N1[1:f, 1:f] <= 100); @variable(model, 0 <= N2[1:f, 1:f] <= 100)
         @variable(model, 0 <= R1[1:s, 1:f] <= 100); @variable(model, 0 <= R2[1:s, 1:f] <= 100)
         @variable(model, 0 <= jota1[1:f, 1:s] <= 100); @variable(model, 0 <= jota2[1:f, 1:s] <= 100)
-        
-        @variable(model, 0 <= U1[1:v, 1:f] <= 100)
-        @variable(model, 0 <= U2[1:v, 1:f] <= 100)
 
         @variable(model, 0 <= Pref1[1:f, 1:r] <= 100)
         @variable(model, 0 <= Pref2[1:f, 1:r] <= 100)
@@ -88,9 +83,6 @@ function step1_saturation_segref(A, B, E, S, R, V; f=12, lambda=0.99, pond=0.5, 
         
         @constraint(model, (R1-R2)*F .== S)
         @constraint(model, (R1+R2)*ones_f .<= ones_s)
-        
-        @constraint(model, (U1-U2)*F .== V*G)
-        @constraint(model, (U1+U2)*ones_f .<= ones_v)
 
         @constraint(model, (jota1-jota2)*S .== F)
         @constraint(model, (jota1+jota2)*ones_s .<= igamma * ones_f)
@@ -100,9 +92,6 @@ function step1_saturation_segref(A, B, E, S, R, V; f=12, lambda=0.99, pond=0.5, 
         @constraint(model, R*F .== S)
         @constraint(model, R*ones_f .<= ones_s)
 
-        @constraint(model, U*F .== V*G)
-        @constraint(model, U*ones_f .<= ones_v)
-
         @constraint(model, jota*S .== F)
         @constraint(model, jota*ones_s .<= igamma * ones_f)
     end
@@ -110,11 +99,12 @@ function step1_saturation_segref(A, B, E, S, R, V; f=12, lambda=0.99, pond=0.5, 
     @objective(model, Min, pond * igamma + (1 - pond) / d)
 
     optimize!(model)
+    println(termination_status(model))
 
     return Dict("d" => value(d), "igamma" => value(igamma), "F" => value.(F), "G" => value.(G), "Pref" => value.(Pref))
 end
 
-function step2_saturation_segref(A, B, E, S, R, V, G, umax, umin, d; f=12, lambda=0.99, symetric=true, time=20)
+function step2_saturation_segref(A, B, E, S, R, G, umax, umin, d; f=12, lambda=0.99, symetric=true, time=20)
     model = Model() do
         return NEOSServer.Optimizer(; email = "wallace.lopes.162@ufrn.edu.br", solver = "Knitro")
     end
@@ -131,12 +121,10 @@ function step2_saturation_segref(A, B, E, S, R, V, G, umax, umin, d; f=12, lambd
     s = size(S, 1)
     m = size(B, 2)
     r = size(R, 1)
-    v = size(V, 1)
     
     ones_f = ones(f)
     ones_s = ones(s)
     ones_r = ones(r)
-    ones_v = ones(v)
 
     @variable(model, -100 <= K[1:n, 1:n] <= 100)
     @variable(model, -100 <= F[1:f, 1:n] <= 100)
@@ -157,15 +145,12 @@ function step2_saturation_segref(A, B, E, S, R, V, G, umax, umin, d; f=12, lambd
         @variable(model, 0 <= N2p[1:f, 1:f] <= 100); @variable(model, 0 <= N2m[1:f, 1:f] <= 100)
         @variable(model, 0 <= T1[1:s, 1:f] <= 100);  @variable(model, 0 <= T2[1:s, 1:f] <= 100)
         @variable(model, 0 <= Pref1[1:f, 1:r] <= 100); @variable(model, 0 <= Pref2[1:f, 1:r] <= 100)
-        
-        @variable(model, 0 <= U1[1:v, 1:f] <= 100)
-        @variable(model, 0 <= U2[1:v, 1:f] <= 100)
 
         @variable(model, 0 <= jota1[1:f, 1:s] <= 100); @variable(model, 0 <= jota2[1:f, 1:s] <= 100)
 
         H = Hp - Hm; L1 = L1p - L1m; L2 = L2p - L2m 
         M = Mp - Mm; N1 = N1p - N1m; N2 = N2p - N2m
-        Pref = Pref1 - Pref2; T = T1 - T2; U = U1 - U2
+        Pref = Pref1 - Pref2; T = T1 - T2
         jota = jota1 - jota2
     else
         @variable(model, 0 <= H[1:f, 1:f] <= 200)
@@ -177,7 +162,6 @@ function step2_saturation_segref(A, B, E, S, R, V, G, umax, umin, d; f=12, lambd
         @variable(model, 0 <= T[1:s, 1:f] <= 200)
 
         @variable(model, 0 <= Pref[1:f, 1:r] <= 200)
-        @variable(model, 0 <= U[1:v, 1:f] <= 200)
         @variable(model, 0 <= jota[1:f, 1:s] <= 200)
     end
 
@@ -214,9 +198,6 @@ function step2_saturation_segref(A, B, E, S, R, V, G, umax, umin, d; f=12, lambd
     # Restrições de Estado S e Controle V
     @constraint(model, T*F .== S)
 
-    # Restrição no controle
-    @constraint(model, U*F .== V*G)
-
     # Restrição do igamma
     @constraint(model, jota*S .== F)
     
@@ -226,7 +207,6 @@ function step2_saturation_segref(A, B, E, S, R, V, G, umax, umin, d; f=12, lambd
         @constraint(model, ((Hp + Hm) + (L2p + L2m) + d*((Mp + Mm) + (N1p + N1m)))*ones_f + (Pref1+Pref2)*ones_r .<= lambda * ones_f)
         @constraint(model, ((Hp + Hm) + (L2p + L2m) + d*((Mp + Mm) + (N2p + N2m)))*ones_f + (Pref1+Pref2)*ones_r .<= lambda * ones_f)
 
-        @constraint(model, (U1+U2)*ones_f .<= ones_v)
         @constraint(model, (T1+T2)*ones_f .<= ones_s)
         @constraint(model, (jota1+jota2)*ones_s .<= igamma*ones_f)
     else
@@ -235,7 +215,6 @@ function step2_saturation_segref(A, B, E, S, R, V, G, umax, umin, d; f=12, lambd
         @constraint(model, (H + L2 + d*(M + N1))*ones_f + Pref*ones_r .<= lambda * ones_f)
         @constraint(model, (H + L2 + d*(M + N2))*ones_f + Pref*ones_r .<= lambda * ones_f)
 
-        @constraint(model, U*ones_f .<= ones_v)
         @constraint(model, T*ones_f .<= ones_s)
         @constraint(model, jota*ones_s .<= igamma*ones_f)
     end

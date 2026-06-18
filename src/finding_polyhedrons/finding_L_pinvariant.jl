@@ -81,17 +81,26 @@ function finding_L_pinvariant(A, B, C, U, X; SOF = false, ll = 6, t = 8, pond = 
 
     #Variáveis encontradas pelo modelo
     #V = value.(V)
+
+    println(termination_status(model))
+    
     L = value.(L)
     SOF ? K = value.(K) :  F = value.(F)
-    print("valor de lambda: ")
-    print(value.(lambda))
 
-    print(termination_status(model))
-
-    hrep_L = hrep(L, xl)
-
-    # mudar o tipo de retorno para dicionario com as matrizes envolvidas
-    # retorna um poliedro do tipo polyhedron da biblioteca Polyhedra (útil para transitar entre as hrep e vrep)
-    return polyhedron(hrep_L, CDDLib.Library())
+    if SOF
+        lambda = value(lambda)
+        K = value.(K)    
+        L = value.(L)
+        result = Dict("lambda" => lambda, "L" => L, "K" => K)
+    
+    else
+        lambda = value(lambda)
+        F = value.(F)    
+        L = value.(L)
+        result = Dict("lambda" => lambda, "L" => L, "F" => F)
+            
+    end
+    
+    return result
 end
 

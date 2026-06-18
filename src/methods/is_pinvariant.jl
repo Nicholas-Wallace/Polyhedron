@@ -152,9 +152,9 @@ function is_pinvariant(A, Ad, X; d=0, symetric=true)
         L = value.(L1) + value.(L2)
 
         @show termination_status(model)
-#        if termination_status(model) != MathOptInterface.LOCALLY_SOLVED 
-#            error("polyhedro não é invariante")
-#        end
+       if termination_status(model) != MathOptInterface.LOCALLY_SOLVED 
+           error("polyhedro não é invariante")
+       end
 
         # retorna um dicionário com lambda e as matrizes K, H e L
         result = Dict("lambda" => lambda, "K" => K, "H" => H, "L" => L)

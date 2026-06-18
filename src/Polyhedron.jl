@@ -1,6 +1,6 @@
 module Polyhedron
 
-using LinearAlgebra, DelimitedFiles, JuMP, HiGHS, NEOSServer, Polyhedra, CDDLib, Base.Iterators, Plots
+using LinearAlgebra, DelimitedFiles, JuMP, HiGHS, NEOSServer, Polyhedra, CDDLib, Base.Iterators, Plots, MathOptInterface
 
 include("types/Vertices.jl")
 
@@ -13,8 +13,6 @@ include("utils/poly_projection.jl")
 
 
 include("methods/is_pinvariant.jl")
-include("methods/is_pinvariant_delay.jl")
-
 
 include("plots/plot_poly.jl")
 
@@ -27,12 +25,17 @@ include("finding_polyhedrons/ref_tracking_delay.jl")
 
 include("trajectories/trajectory_segref.jl")
 
+include("pipelines/pipe_trajectory.jl")
+
 
 export finding_L_pinvariant, finding_L_pinvariant_delay, finding_L_pinvariant_segref, finding_L_pinvariant_segref_delay,step1_saturation, step2_saturation, is_pinvariant_seg_ref	
 export is_pinvariant, is_pinvariant_delay
 export plot_poly, get_shape
 export Vertices, get_vertices, get_extreme_vertices, poly_projection, get_extVert_tuple
 export cond_iniciais_adm, mat_cond_iniciais_adm, elim_red, extended_F, extended_A, extended_A_Vector, allPossibleComb, admissable_initCond
+
+export pipe_trajectory
+
 # falta outros.jl
 export trajectory_delay, trajectory, vet_eq_spc, trajectory_segref, trajectory_delay_sat, trajectory_segref_delay
 

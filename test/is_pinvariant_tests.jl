@@ -16,10 +16,11 @@ using Polyhedron
     @test_throws "Poliedro não é invariante" is_pinvariant(A, B, C, U, X, SOF=true)
 
     # Com Delay
-
     A = [1.2 0.2; -0.4 0.6]
-    Ad = [-0.3 -0.2; 0.4 0.2]
+    Ad = [-0.3 -0.2; 0.4 0.3]
+
     X = [-1 -1; 2 1]
+
     @test is_pinvariant(A, Ad, X, symetric=true, d=1)["lambda"] < 1
     @test is_pinvariant(A, Ad, X, symetric=true, d=10)["lambda"] < 1
 

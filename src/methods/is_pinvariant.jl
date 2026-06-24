@@ -85,7 +85,7 @@ function is_pinvariant(A::Matrix, B::Matrix, C::Matrix, U::Matrix, X; SOF::Bool 
         optimize!(model)
 
         H = value.(H)
-        X = value.(X)
+        F = value.(F)
         M = value.(M)
         lambda = value.(lambda)
 
@@ -93,7 +93,7 @@ function is_pinvariant(A::Matrix, B::Matrix, C::Matrix, U::Matrix, X; SOF::Bool 
             error("polyhedro não é invariante")
         end
 
-        result = Dict("H" => H, "X" => X, "M" => M, "lambda" => lambda)
+        result = Dict("H" => H, "F" => F, "M" => M, "lambda" => lambda)
 
         return result
 

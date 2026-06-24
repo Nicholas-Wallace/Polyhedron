@@ -36,3 +36,50 @@ function pipe_trajectory(F::Matrix, A_exp::Matrix, B_exp::Matrix, E_exp::Matrix,
         ylabel = "x2")
 end
 
+function pipe_trajectory(A, B, F, X; passos=50)
+	plt = plot_poly(X, ones(size(X, 1)))
+	x0 = [[-1.0, 1.0]]
+	
+	for i in 1:passos
+		x = x0[end]
+        x_new = (A+B*F)*x
+		push!(x0, x_new)
+	end
+	x1 = [x[1] for x in x0]
+	x2 = [x[2] for x in x0]
+	
+	plot!(x1, x2,
+	seriestype = :path,          # connects points with lines
+	linewidth = 2,
+	marker = :diamond,
+	markersize = 5,
+	markercolor = :purple,
+	label = "d = 10")
+end
+
+function pipe_trajectory(X::Matrix, A::Matrix, Ad::Matrix; d::Int=0, symetric=false)
+    w = ones(size(X, 1))
+    n = size(A, 1)
+    
+    init_cond_X, init_cond_w = admissable_initCond(A, Ad, X, d, w, symetric=symetric)
+    
+    
+    plt = plot_poly(X, w)
+    ext_vertices_tuple = get_extVert_tuple(init_cond_X, init_cond_w, 2, n)
+
+    traj = trajectory_delay(ext_vertices_tuple, A, Ad, 10, d)
+    x = [p[1] for p in traj]
+    y = [p[2] for p in traj]
+    
+    # Plot as connected trajectory with markers
+    plot!(x, y,
+        seriestype = :path,          # connects points with lines
+        linewidth = 2,
+        marker = :diamond,
+        markersize = 5,
+        markercolor = :purple,
+        label = "d = 10")
+    
+    return plt
+
+end

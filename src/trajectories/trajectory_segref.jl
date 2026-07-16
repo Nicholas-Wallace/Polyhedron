@@ -47,11 +47,3 @@ function trajectory_segref_delay(x0, A, BG, E, r, passos, d; varying=false, reve
 
     return x0_traj[d:end]
 end
-
-function expanded_state_trajectory(traj)
-    # plotando o espaco aumentado do exemplo do artigo sem o v(k)
-    plot(traj[:, 1:3], 
-     label=["x1" "x2" "w"], 
-     xlabel="k",  
-     title="X[k]")
-end

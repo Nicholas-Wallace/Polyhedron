@@ -31,3 +31,30 @@ function get_shape(inq_matrix, w)
 
     return Shape(vertices)
 end
+
+function plot_vertices(F, vertices)
+
+    T = Polyhedron.poly_projection(F[:,3:4])
+    plt = Polyhedron.plot_poly(T*F[:,1:2], T*ones(size(F, 1)))
+
+    x1 = [v[1] for v in vertices]
+    x2 = [v[2] for v in vertices]
+    plot!(x1, x2, seriestype = :scatter, label = "Vertices", color = :red)
+end
+
+function plot_trajectories(F, trajs)
+    T = Polyhedron.poly_projection(F[:,3:4])
+    plt = Polyhedron.plot_poly(T*F[:,1:2], T*ones(size(F, 1)))
+
+    for (i, traj) in enumerate(trajs)
+        x1 = [p[1] for p in traj]
+        x2 = [p[2] for p in traj]
+        plot!(x1, x2,
+                 seriestype = :path,
+                 linewidth = 2,
+                 marker=:circle,
+                 label = "Trajectory $i")
+    end
+
+    return plt
+end

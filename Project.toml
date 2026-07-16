@@ -1,7 +1,7 @@
 name = "Polyhedron"
 uuid = "655525d5-f7f4-4296-bb1a-535617bc1f19"
-authors = ["Nicholas Wallace <nicholaswlopes@hotmail.com>"]
 version = "0.1.0"
+authors = ["Nicholas Wallace <nicholaswlopes@hotmail.com>"]
 
 [deps]
 CDDLib = "3391f64e-dcde-5f30-b752-e11513730f60"

@@ -1,23 +1,22 @@
 
 export pipe_trajectory
 
-function pipe_trajectory(F::Matrix, A_exp::Matrix, B_exp::Matrix, E_exp::Matrix, G::Matrix, d::Int, Ref::Float64; passos=300)
+function pipe_trajectory(F::Matrix, A_exp::Matrix, B_exp::Matrix, E_exp::Matrix, G::Matrix, d::Int, Ref::Float64, traj_ini; passos=300)
     w = ones(size(F, 1))
     nx = size(A_exp, 1)
 
     T = Polyhedron.poly_projection(F[:,3:4])
 
 
-    passos = 300
     r = ones(passos)*Ref # escolher a referência a se seguir 
 
     BG = B_exp * G
 
-    init_cond_F, init_cond_w = Polyhedron.admissable_initCond(A_exp, BG, F, d, w; fixed_d=true)
-    ext_vertices_tuple = Polyhedron.get_extVert_tuple(init_cond_F, init_cond_w, 2, nx)
-    traj = Polyhedron.trajectory_segref_delay(ext_vertices_tuple, A_exp, BG, E_exp, r, passos, d; reverse=false)
+    #init_cond_F, init_cond_w = Polyhedron.admissable_initCond(A_exp, BG, F, d, w; fixed_d=true)
+    #ext_vertices_tuple = Polyhedron.get_extVert_tuple(init_cond_F, init_cond_w, 2, nx)
+    traj = Polyhedron.trajectory_segref_delay(traj_ini, A_exp, BG, E_exp, r, passos, d; reverse=false)
 
-    Polyhedron.plot_poly(T*F[:,1:2], T*ones(size(F, 1)))
+    plt = Polyhedron.plot_poly(T*F[:,1:2], T*ones(size(F, 1)))
 
     x1 = [p[1] for p in traj]
     x2 = [p[2] for p in traj]
@@ -34,6 +33,21 @@ function pipe_trajectory(F::Matrix, A_exp::Matrix, B_exp::Matrix, E_exp::Matrix,
         label = "d = 2",
         xlabel = "x1",
         ylabel = "x2")
+
+    scatter!([first(x1)], [first(x2)], 
+            marker = :x, 
+            markersize = 7, 
+            markercolor = :green, 
+            label = "Start")
+
+    # Add a red marker at the end
+    scatter!([last(x1)], [last(x2)], 
+            marker = :x, 
+            markersize = 7, 
+            markercolor = :black, 
+            label = "End")
+
+    return plt, traj
 end
 
 function pipe_trajectory(A, B, F, X; passos=50)

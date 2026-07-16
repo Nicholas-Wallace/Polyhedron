@@ -23,22 +23,24 @@ end
 # DE ALGUM VÉRTICE DO POLIEDRO DE CONDIÇÕES INICIAIS ADMISSÍVEIS
 # "n" É A ORDEM DO SISTEMA E "i" É O ÍNDICE DO VÉRTICE A SER ESCOLHIDO
 
-function get_extVert_tuple(init_cond_F, init_cond_w, i, n)
+function get_extVert_tuple(init_cond_F, init_cond_w, n)
     hrep_ic = hrep(init_cond_F, init_cond_w)
-    P = vrep(polyhedron(hrep_ic, CDDLib.Library()))
+    #h = removehredundancy(hrep_ic, HiGHS.Optimizer)
+    p = polyhedron(hrep_ic, CDDLib.Library())
+    
+    #v = removevredundancy(vrep(p), custom_highs)
+    v = vrep(p)
 
-    ext_vertices = collect(points(P))
-    vertice_alvo = ext_vertices[i]
-
-    ext_vertices_tuple = Tuple[]
-
-    for i in 1:n:length(vertice_alvo)
-        estado = vertice_alvo[i : i + n - 1]
-        push!(ext_vertices_tuple, Tuple(estado))
+    # seria bom saber de antemao o tamanho do vetor vertices
+    vertices = Vector{Vector{Vector{Float64}}}()
+    for pt in points(v)
+        chunks = partition(collect(pt), n)
+        push!(vertices, collect.(chunks)) # Adds each chunk as a Vector{Float64}
     end
 
-    return ext_vertices_tuple
+    return vertices
 end
+
 
 function get_extreme_vertices(A, b, num_pontos=5)
     n_vars = size(A, 2)

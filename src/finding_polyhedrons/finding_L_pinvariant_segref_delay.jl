@@ -1,18 +1,23 @@
 
-"""
-    finding_L_pinvariant_segref_delay(A, B, E, S, R, d; lambda=0.99, time=10, lf=10) -> Dict{String, Matrix}
+#############################################
+### essa função é referente a um sistema: ###
+###     x[k+1] = Ax(k) BGx(k-d) + Er(k)   ### 
+#############################################
 
-Procuramos um poliedro de f linhas que seja invariante w.r.t
 
-    x[k+1] = Ax(k) BGx(k-d) + Er(k)
-
-G é o ganho do controlador
-S é o poliedro de restrições 
-
-Retorna um dicionario com:
-o poliedro encontrado, a matriz de ganho
-lambda e todas as matrizes utilizadas no problema de otimização                                   
-"""
+###        Farkas para o poliedro ser invaiante         ###
+# H*F == F(A+K)                                         ###
+# L*F == F(BG - K)                                      ###
+# M*F == -FK(A -I)                                      ###
+# N*F == -FKBG                                          ###
+# P*R == F*E                                            ###    
+# (H + L + d(M+N))*ones_f + P*ones_r .<= lambda*ones_f  ###
+#                                                       ###
+###  Para estar contido em S (poliedro das restricoes)  ###
+#                                                       ###
+# T*F == S                                              ###
+# T*ones_f .<= ones_f                                   ###
+###########################################################
 
 function finding_L_pinvariant_segref_delay(A, B, E, S, R, d; lambda=0.99, time=10, lf=10) 
     
@@ -501,6 +506,8 @@ function finding_L_pinvariant_segref_delay_sim2(A, B, E, S, R, V, d; lambda=0.99
     @variable(model, 0 <= Zm[1:lf, 1:s] <= 300)
     @variable(model, 0 <= Up[1:v, 1:lf] <= 300)
     @variable(model, 0 <= Um[1:v, 1:lf] <= 300)
+    @variable(model, 0 <= Qp[1:lf,1:r] <= 300)
+    @variable(model, 0 <= Qm[1:lf,1:r] <= 300)
     @variable(model, J[1:n, 1:lf]) #Pseudo inversa
 
     @variable(model, igamma >= 1)
@@ -512,6 +519,7 @@ function finding_L_pinvariant_segref_delay_sim2(A, B, E, S, R, V, d; lambda=0.99
     @constraint(model, (Mp - Mm)*F == -F*K*(A-I(n)))
     @constraint(model, (Np - Nm)*F == -F*K*B*G)
     @constraint(model, (Pp - Pm)*R == F*E)
+    @constraint(model, (Qp - Qm)*R == -F*K*E)
     @constraint(model, (Tp - Tm)*F == S)
     @constraint(model, J*F == I(n))
 
@@ -523,7 +531,7 @@ function finding_L_pinvariant_segref_delay_sim2(A, B, E, S, R, V, d; lambda=0.99
     @constraint(model, (Up - Um)*F == V*G)
     @constraint(model, (Up + Um)*ones_f .<= ones_v)
     
-    @constraint(model, ((Hp + Hm) + (Lp + Lm) + d*((Mp + Mm) + (Np + Nm)))*ones_f + (Pp + Pm)*ones_r .<= ones_f*lambda)
+    @constraint(model, ((Hp + Hm) + (Lp + Lm) + d*((Mp + Mm) + (Np + Nm)))*ones_f + ((Pp + Pm) + d*(Qp + Qm))*ones_r .<= ones_f*lambda)
     @constraint(model, (Tp + Tm)*ones_f .<= ones_s)
 
     #0  Auto (Knitro escolhe sozinho).
@@ -553,6 +561,8 @@ function finding_L_pinvariant_segref_delay_sim2(A, B, E, S, R, V, d; lambda=0.99
     Nm = value.(Nm)
     Pp = value.(Pp)
     Pm = value.(Pm)
+    Qp = value.(Qp)
+    Qm = value.(Qm)
     Tp = value.(Tp)
     Tm = value.(Tm)
     Zp = value.(Zp)
@@ -564,13 +574,13 @@ function finding_L_pinvariant_segref_delay_sim2(A, B, E, S, R, V, d; lambda=0.99
 
     result = Dict("F" => F, "G" => G, "K" => K, "J" => J, 
                   "H_diff" => Hp - Hm, "L_diff" => Lp - Lm, "M_diff" => Mp - Mm, "N_diff" => Np - Nm, 
-                  "P_diff" => Pp - Pm, "T_diff" => Tp - Tm, "Z_diff" => Zp - Zm,
+                  "P_diff" => Pp - Pm, "Q_diff" => Qp - Qm, "T_diff" => Tp - Tm, "Z_diff" => Zp - Zm,
                   "H_sum" => Hp + Hm, "L_sum" => Lp + Lm, "M_sum" => Mp + Mm, "N_sum" => Np + Nm,
-                  "P_sum" => Pp + Pm, "T_sum" => Tp + Tm, "Z_sum" => Zp + Zm,
+                  "P_sum" => Pp + Pm, "Q_sum" => Qp + Qm, "T_sum" => Tp + Tm, "Z_sum" => Zp + Zm,
                   "U_diff" => Up - Um, "U_sum" => Up + Um,
                   "Hp" => Hp, "Hm" => Hm, "Lp" => Lp, "Lm" => Lm, 
                   "Mp" => Mp, "Mm" => Mm, "Np" => Np, "Nm" => Nm,
-                  "Pp" => Pp, "Pm" => Pm, "Tp" => Tp, "Tm" => Tm, 
+                  "Pp" => Pp, "Pm" => Pm, "Qp" => Qp, "Qm" => Qm, "Tp" => Tp, "Tm" => Tm, 
                   "Zp" => Zp, "Zm" => Zm, "Up" => Up, "Um" => Um)
 
     # Salvar matrizes em arquivo (valores simétricos como a diferença)
@@ -614,6 +624,10 @@ function finding_L_pinvariant_segref_delay_sim2(A, B, E, S, R, V, d; lambda=0.99
         writedlm(io, Pp - Pm)
         println(io, "")
         
+        println(io, "=== Matriz Q (Farkas para -F*K*E - diferença Qp - Qm) ===")
+        writedlm(io, Qp - Qm)
+        println(io, "")
+        
         println(io, "=== Matriz T (Inclusão em S - diferença Tp - Tm) ===")
         writedlm(io, Tp - Tm)
         println(io, "")
@@ -644,6 +658,10 @@ function finding_L_pinvariant_segref_delay_sim2(A, B, E, S, R, V, d; lambda=0.99
         
         println(io, "=== Valores de P em valor absoluto (Pp + Pm) ===")
         writedlm(io, Pp + Pm)
+        println(io, "")
+        
+        println(io, "=== Valores de Q em valor absoluto (Qp + Qm) ===")
+        writedlm(io, Qp + Qm)
         println(io, "")
         
         println(io, "=== Valores de T em valor absoluto (Tp + Tm) ===")

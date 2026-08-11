@@ -41,6 +41,23 @@ function get_extVert_tuple(init_cond_F, init_cond_w, n)
     return vertices
 end
 
+function get_extVert_tuple_old(init_cond_F, init_cond_w, i, n)
+    hrep_ic = hrep(init_cond_F, init_cond_w)
+    P = vrep(polyhedron(hrep_ic, CDDLib.Library()))
+
+    ext_vertices = collect(points(P))
+    vertice_alvo = ext_vertices[i]
+
+    ext_vertices_tuple = Tuple[]
+
+    for i in 1:n:length(vertice_alvo)
+        estado = vertice_alvo[i : i + n - 1]
+        push!(ext_vertices_tuple, Tuple(estado))
+    end
+
+    return ext_vertices_tuple
+end
+
 
 function get_extreme_vertices(A, b, num_pontos=5)
     n_vars = size(A, 2)

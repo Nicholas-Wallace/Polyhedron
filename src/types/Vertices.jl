@@ -23,10 +23,44 @@ end
 # DE ALGUM VÉRTICE DO POLIEDRO DE CONDIÇÕES INICIAIS ADMISSÍVEIS
 # "n" É A ORDEM DO SISTEMA E "i" É O ÍNDICE DO VÉRTICE A SER ESCOLHIDO
 
+function calcular_v(F, E, R)
+    # Pré-computa a matriz M = F * E
+    M = F * E
+    
+    n_linhas = size(M, 1)
+    n_cols_R = size(R, 2)  # dimensão do vetor r
+    
+    ones_r = ones(size(R, 1))
+    
+    v = zeros(n_linhas)
+    
+    # Cria UM único modelo e resolve repetidamente (mais eficiente que criar N modelos)
+    model = Model(HiGHS.Optimizer)
+    set_silent(model)
+    
+    @variable(model, r[1:n_cols_R])
+    @constraint(model, restricoes, R * r .<= ones_r)
+    
+    for i in 1:n_linhas
+        # Define o objetivo como a i-ésima linha de M
+        @objective(model, Max, sum(M[i, j] * r[j] for j in 1:n_cols_R))
+        
+        optimize!(model)
+        
+        if termination_status(model) == OPTIMAL
+            v[i] = objective_value(model)
+        else
+            error("LP infeasible or unbounded at row $i")
+        end
+    end
+    
+    return v
+end
+
 function get_extVert_tuple(init_cond_F, init_cond_w, n)
     hrep_ic = hrep(init_cond_F, init_cond_w)
     #h = removehredundancy(hrep_ic, HiGHS.Optimizer)
-    p = polyhedron(hrep_ic, CDDLib.Library())
+    p = polyhedron(hrep_ic, CDDLib.Library(:exact))
     
     #v = removevredundancy(vrep(p), custom_highs)
     v = vrep(p)

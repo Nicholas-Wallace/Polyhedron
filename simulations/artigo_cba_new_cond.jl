@@ -31,6 +31,9 @@ using PlutoUI
 # ╔═╡ 6328bb51-e5c9-485c-b2c6-07b954faaf37
 using Polyhedron
 
+# ╔═╡ 36bf5979-f314-4f08-a192-a9b0c3eab65f
+using LinearAlgebra
+
 # ╔═╡ b818e60c-86c9-4dcd-b86d-01bf740a3255
 md"""
 Definindo o sistema de interesse
@@ -128,7 +131,7 @@ traj_ini = [[2.7388208921740618,	-14.040137368808697,	-300.04220168579127,	-15.0
   ╠═╡ =#
 
 # ╔═╡ fa66c678-3e1e-4016-861e-eb0179f793ab
-G = [-0.09043589303665445	-0.08656210844107828	0.005122875252774146	0.2380944797007607;;]
+G = [-0.09043589303665445	-0.08656210844107828	0.005122875252774146	0.2380944797007607]
 
 
 # ╔═╡ b0060dbb-ea29-498b-b17b-e42a6ba3078d
@@ -142,8 +145,23 @@ w = ones(size(F, 1))
 # ╔═╡ 67f685f5-816b-4d4f-a0ec-0c12336fccd7
 nx = size(A_exp, 1)
 
-# ╔═╡ 4ac93b77-7567-430f-82fe-d2e2ed75a893
-init_cond_F, init_cond_w = admissable_initCond(A_exp, B_exp*G, F, d, w; fixed_d=true)
+# ╔═╡ e5235f94-2b34-4e57-8a98-0e74b9eca789
+begin
+    n = size(A_exp, 1)
+    
+    Z = zeros(n, n)
+    Zf = zeros(size(F, 1), n)
+    
+    Fe = [F Zf Zf;
+          Zf F Zf;
+          Zf Zf F]
+    
+    Ee = [E_exp; [0;0;0;0]; [0;0;0;0]]
+    
+    Ae = [A_exp  Z  B_exp*G;
+            I(n)    Z  Z;
+           Z      I(n)  Z]
+end
 
 # ╔═╡ a97a764b-0b36-426e-99b9-69b7fbe1f543
 md"""
@@ -273,6 +291,27 @@ end
 # ╔═╡ 2ae50f46-3fa3-4418-954e-ce9cd61d353c
 plt_rev
 
+# ╔═╡ 5ba9d134-301e-4a52-b39f-950df23687d5
+begin
+	N = size(Fe, 1)
+	ones_N = ones(N)
+	
+	v1 = calcular_v(Fe, Ee, R)
+	v2 = calcular_v(Fe, Ae * Ee, R)
+	
+	l = ones_N - v1
+	m = ones_N - v1 - v2
+	
+	init_cond_w = vcat(ones_N, vcat(l, m))
+	init_cond_F = [Fe; Fe*Ae; Fe*Ae*Ae]
+end
+
+# ╔═╡ 4ac93b77-7567-430f-82fe-d2e2ed75a893
+# ╠═╡ disabled = true
+#=╠═╡
+init_cond_F, init_cond_w = admissable_initCond(A_exp, B_exp*G, F, d, w; fixed_d=true)
+  ╠═╡ =#
+
 # ╔═╡ Cell order:
 # ╠═f9a4c39e-7ef6-11f1-ba82-979f074de1d9
 # ╠═45e5da98-e38c-4795-a6b6-b7f547b98b9d
@@ -290,10 +329,13 @@ plt_rev
 # ╟─b0060dbb-ea29-498b-b17b-e42a6ba3078d
 # ╟─7f4300d9-fa32-4a55-bd94-6718bea414fb
 # ╟─67f685f5-816b-4d4f-a0ec-0c12336fccd7
+# ╠═36bf5979-f314-4f08-a192-a9b0c3eab65f
+# ╠═e5235f94-2b34-4e57-8a98-0e74b9eca789
+# ╠═5ba9d134-301e-4a52-b39f-950df23687d5
 # ╠═4ac93b77-7567-430f-82fe-d2e2ed75a893
 # ╟─a97a764b-0b36-426e-99b9-69b7fbe1f543
 # ╟─6a50db38-84c1-4eb9-8ef9-c6dee43ce933
-# ╟─87aa2fea-d2ed-4e47-b8b0-fdf30062caa8
+# ╠═87aa2fea-d2ed-4e47-b8b0-fdf30062caa8
 # ╠═68b3b178-67ae-4d13-b37c-9b7b17e12220
 # ╟─2621005a-c65d-4962-9243-18d0daf7d2a3
 # ╠═6d9edc1a-63fd-4c2e-a69b-6e8fd007d828

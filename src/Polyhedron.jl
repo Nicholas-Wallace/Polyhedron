@@ -32,7 +32,7 @@ export step1_saturation_segref, step2_saturation_segref, step1_saturation_segref
 export is_pinvariant
 export plot_poly, get_shape, plot_vertices, plot_trajectories, plot_expanded_state_trajectory, plot_v_state_trajectory
 export Vertices, get_vertices, get_extreme_vertices, poly_projection, get_extVert_tuple
-export cond_iniciais_adm, mat_cond_iniciais_adm, elim_red, extended_F, extended_A, extended_A_Vector, allPossibleComb, admissable_initCond, calcular_v
+export cond_iniciais_adm, mat_cond_iniciais_adm, elim_red, extended_F, extended_A, extended_A_Vector, allPossibleComb, admissable_initCond, calcular_v, elimred
 
 export pipe_trajectory
 

@@ -248,8 +248,8 @@ Vamos pegar 4 pontos de partida
 
 # ╔═╡ 0372b717-c18c-4e30-b42e-839c0811e2c4
 begin
-	plt_sul, traj_sul = pipe_trajectory(F, A_exp, B_exp, E_exp, G, d, 5.0,reverse(v_sorted[94108]), passos=200)
-	plt_sul, traj_sul = pipe_trajectory(F, A_exp, B_exp, E_exp, G, d, -5.0,traj_sul, passos=300)
+	plt_sul, traj_sul = pipe_trajectory(F, A_exp, B_exp, E_exp, G, d, 8.0,reverse(v_sorted[94108]), passos=300)
+	plt_sul, traj_sul = pipe_trajectory(F, A_exp, B_exp, E_exp, G, d, -8.0,traj_sul, passos=300)
 end
 
 # ╔═╡ bf396529-f045-4b00-aac7-9fdc1f02047f
@@ -259,8 +259,8 @@ plt_sul
 
 # ╔═╡ fe099f74-a943-4fa9-8b10-db54714855a9
 begin
-	plt_norte, traj_norte = pipe_trajectory(F, A_exp, B_exp, E_exp, G, d, 5.0,reverse(v_sorted[31824]), passos=200)
-	plt_norte, traj_norte = pipe_trajectory(F, A_exp, B_exp, E_exp, G, d, -5.0,traj_norte, passos=300)
+	plt_norte, traj_norte = pipe_trajectory(F, A_exp, B_exp, E_exp, G, d, 8.0,reverse(v_sorted[31824]), passos=300)
+	plt_norte, traj_norte = pipe_trajectory(F, A_exp, B_exp, E_exp, G, d, -8.0,traj_norte, passos=300)
 end
 
 # ╔═╡ 3694f734-e34a-4e6f-b6dc-abc3c73bee6c
@@ -270,8 +270,8 @@ plt_norte
 
 # ╔═╡ 8d7b357e-451a-4098-985d-89c884092fed
 begin
-	_, traj_leste = pipe_trajectory(F, A_exp, B_exp, E_exp, G, d, 5.0,reverse(v_sorted[107852]), passos=300)
-	plt_leste, traj_leste = pipe_trajectory(F, A_exp, B_exp, E_exp, G, d, -5.0,traj_leste, passos=300)
+	_, traj_leste = pipe_trajectory(F, A_exp, B_exp, E_exp, G, d, 8.0,reverse(v_sorted[107852]), passos=300)
+	plt_leste, traj_leste = pipe_trajectory(F, A_exp, B_exp, E_exp, G, d, -8.0,traj_leste, passos=300)
 end
 
 # ╔═╡ 4bdd0dc6-6f5b-4be2-b41e-aa8f73839bf2
@@ -281,8 +281,8 @@ plt_leste
 
 # ╔═╡ 18c35444-7fbb-495f-823c-f7e3d3c252be
 begin
-	_, traj_oeste = pipe_trajectory(F, A_exp, B_exp, E_exp, G, d, 5.0,reverse(v_sorted[9536]), passos=300)
-	plt_oeste, traj_oeste = pipe_trajectory(F, A_exp, B_exp, E_exp, G, d, -5.0,traj_oeste, passos=300)
+	_, traj_oeste = pipe_trajectory(F, A_exp, B_exp, E_exp, G, d, 8.0,reverse(v_sorted[9536]), passos=300)
+	plt_oeste, traj_oeste = pipe_trajectory(F, A_exp, B_exp, E_exp, G, d, -8.0,traj_oeste, passos=300)
 end
 
 # ╔═╡ ae317296-62b3-40ac-99cb-fc6cba3cb3f7
@@ -314,9 +314,40 @@ md"""
 Passando as matrizes para um arquivo .mat
 """
 
+# ╔═╡ 6bf29487-e6af-41c0-9899-42593ce22649
+begin
+	K = [-0.005895724889024788	-0.004852451763849023	0.00023072302830382636	0.02523718111724989;
+	-0.0028750606375070767	0.0006813146818040654	-0.0002771916753272453	0.0007857547976951455;
+	0.09175481815071201	0.14138426919747357	-0.011897449486050867	-0.2275783948857918;
+	0.003230800225057837	0.003708901096689136	-0.0003192354887556665	-0.006480028934478674]
+	u_norte = [G*x for x in traj_norte]
+	u_norte = [elem[1] for elem in u_norte]
+	u_sul = [G*x for x in traj_sul]
+	u_sul = [elem[1] for elem in u_sul]
+	u_leste = [G*x for x in traj_leste]
+	u_leste = [elem[1] for elem in u_leste]
+	u_oeste = [G*x for x in traj_oeste]
+	u_oeste = [elem[1] for elem in u_oeste]
+end
+
+# ╔═╡ eb96fe20-7b7a-4004-9e27-73eb4293e873
+plot_along_k([u_leste, u_oeste, u_norte, u_sul])
+
+# ╔═╡ b7e3dcbf-b17a-4ba3-8e43-7f9e1e4327db
+maximum(abs.(u_leste))
+
+# ╔═╡ 0d119224-7aee-44c3-a2c0-2a01f11d3a46
+maximum(abs.(u_oeste))
+
+# ╔═╡ 5fc556df-9203-4a8b-ab5d-e6c683f574bd
+maximum(abs.(u_norte))
+
+# ╔═╡ 30129ad8-a6d1-45a2-821c-48a5fdb4e3ea
+maximum(abs.(u_sul))
+
 # ╔═╡ dc0468c1-24bd-48b0-ac1e-aa0c4825fa86
 begin
-	file = matopen("artigo_cba_new_cond.mat", "w")
+	file = matopen("results_logs/artigo_cba_new_cond.mat", "w")
 	
 	write(file, "traj_norte", traj_norte)
 	write(file, "traj_sul", traj_sul)
@@ -324,6 +355,17 @@ begin
 	write(file, "traj_oeste", traj_oeste)
 
 	write(file, "F", F)
+	write(file, "G", G)
+
+	write(file, "u_norte", u_norte)
+	write(file, "u_sul", u_sul)
+	write(file, "u_leste", u_leste)
+	write(file, "u_oeste", u_oeste)
+	write(file, "K", K)
+
+	write(file, "A", A)
+	write(file, "B", B)
+	write(file, "C", C)
 	
 	close(file)
 end
@@ -377,4 +419,10 @@ end
 # ╠═d7d2ec55-8de5-40f5-be93-18e1ffc1ef31
 # ╟─c11c50fb-fd54-4ace-a3b9-b53d94267287
 # ╠═2094eec6-7d71-4338-886c-722573924746
+# ╠═6bf29487-e6af-41c0-9899-42593ce22649
+# ╠═eb96fe20-7b7a-4004-9e27-73eb4293e873
+# ╠═b7e3dcbf-b17a-4ba3-8e43-7f9e1e4327db
+# ╠═0d119224-7aee-44c3-a2c0-2a01f11d3a46
+# ╠═5fc556df-9203-4a8b-ab5d-e6c683f574bd
+# ╠═30129ad8-a6d1-45a2-821c-48a5fdb4e3ea
 # ╠═dc0468c1-24bd-48b0-ac1e-aa0c4825fa86

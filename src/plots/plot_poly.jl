@@ -63,6 +63,26 @@ function plot_expanded_state_trajectory(trajs)
     return final_plot
 end
 
+function plot_along_k(trajs)
+    plots_list = []
+    
+    for (i, traj) in enumerate(trajs)
+        # Generate an individual subplot for the current trajectory
+        p = plot([p for p in traj],
+                 label="v", 
+                 xlabel="k",
+                 st = :steppost,  
+                 title="Traj $i")
+        
+        push!(plots_list, p)
+    end
+    
+    # The `layout` parameter controls the grid shape (e.g., length(trajs) rows and 1 column)
+    final_plot = plot(plots_list..., layout = (length(trajs), 1), size = (600, 300 * length(trajs)))
+    
+    return final_plot
+end
+
 function plot_v_state_trajectory(trajs)
     plots_list = []
     

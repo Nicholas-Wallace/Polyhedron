@@ -60,7 +60,7 @@ end
 function get_extVert_tuple(init_cond_F, init_cond_w, n)
     hrep_ic = hrep(init_cond_F, init_cond_w)
     #h = removehredundancy(hrep_ic, HiGHS.Optimizer)
-    p = polyhedron(hrep_ic, CDDLib.Library(:exact))
+    p = polyhedron(hrep_ic, CDDLib.Library())
     
     #v = removevredundancy(vrep(p), custom_highs)
     v = vrep(p)

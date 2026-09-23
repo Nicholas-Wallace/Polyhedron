@@ -63,16 +63,17 @@ Vamos declarar um sistema LIT
 
 ```julia
 A = [1 1; 0 1]
-B = [2; 1]
+B = [2; 1;;]
 C = [1 0]
 X = [0.8 0; 0 1; -1 0; 0 -1]
-U = [1.2; -1.5]
+U = [1.2; -1.5;;]
+system = LTISystem(A, B, C)
 ```
 
 Agora procuramos um poliedro invariate
 
 ```julia
-result = Polyhedron.finding_L_pinvariant(A, B, C, U, X)
+result = Polyhedron.finding_L_pinvariant(system, U, X)
 ```
 
 E plotamos o resultado

@@ -1,14 +1,15 @@
 @testset "Test 1" begin
 
     A = [1 1; 0 1]
-    B = [2; 1]
+    B = [2; 1;;]
     C = [1 0]
     X = [0.8 0; 0 1; -1 0; 0 -1]
-    U = [1.2; -1.5]
+    U = [1.2; -1.5;;]
+    system = LTISystem(A, B, C)
 
-    @test is_pinvariant(A, B, C, U, X) < 1
+    @test is_pinvariant(system, U, X) < 1
 
-    @test is_pinvariant(A, B, C, U, X, SOF = true) > 1
+    @test is_pinvariant(system, U, X, SOF = true) > 1
 
     A = [1.2 0.2; -0.4 0.6]
     Ad = [-0.3 -0.2; 0.4 0.2]

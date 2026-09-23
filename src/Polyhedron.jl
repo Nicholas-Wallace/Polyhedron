@@ -3,6 +3,7 @@ module Polyhedron
 using LinearAlgebra, DelimitedFiles, JuMP, HiGHS, NEOSServer, Polyhedra, CDDLib, Base.Iterators, Plots, MathOptInterface
 
 include("types/Vertices.jl")
+include("types/LTISystem.jl")
 
 include("utils/cond_iniciais_adm.jl")
 include("utils/vet_eq_spc.jl")
@@ -32,6 +33,7 @@ export step1_saturation_segref, step2_saturation_segref, step1_saturation_segref
 export is_pinvariant
 export plot_poly, get_shape, plot_vertices, plot_trajectories, plot_expanded_state_trajectory, plot_v_state_trajectory, plot_along_k
 export Vertices, get_vertices, get_extreme_vertices, poly_projection, get_extVert_tuple
+export LTISystem
 export cond_iniciais_adm, mat_cond_iniciais_adm, elim_red, extended_F, extended_A, extended_A_Vector, allPossibleComb, admissable_initCond, calcular_v
 export calcular_v
 

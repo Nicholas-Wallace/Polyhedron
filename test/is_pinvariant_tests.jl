@@ -22,8 +22,8 @@ using Polyhedron
 
     X = [-1 -1; 2 1]
 
-    @test is_pinvariant(A, Ad, X, symetric=true, d=1)["lambda"] < 1
-    @test is_pinvariant(A, Ad, X, symetric=true, d=10)["lambda"] < 1
+    @test is_pinvariant(SystemDelayed(A, Ad, 1), X, symetric=true)["lambda"] < 1
+    @test is_pinvariant(SystemDelayed(A, Ad, 10), X, symetric=true)["lambda"] < 1
 
-    @test_throws "Poliedro não é invariante" @test is_pinvariant(A, Ad, X, symetric=true, d=11)["lambda"] < 1
+    @test_throws "Poliedro não é invariante" @test is_pinvariant(SystemDelayed(A, Ad, 11), X, symetric=true)["lambda"] < 1
 end

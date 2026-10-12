@@ -182,7 +182,10 @@ Todos os vertices:
 """
 
 # ╔═╡ 6d9edc1a-63fd-4c2e-a69b-6e8fd007d828
-plot_vertices(F, p[3] for p in v)
+plot_vertices(F, p[1] for p in v)
+
+# ╔═╡ 0ab43590-ed03-4198-b12e-fa3e8297ac34
+v_sorted = y = sort(v; by = x -> x[1][1])
 
 # ╔═╡ e8eb024b-a10c-44be-8f6a-1349270e3cc4
 # leste 6, leste 89, norte [362, 364], sul 37, oeste 447, leste 39
@@ -196,7 +199,7 @@ fui procurando por todos os vertices no poliedro
 @bind i Slider(1:size(v, 1), show_value=true)
 
 # ╔═╡ dbe8ea2f-6f3c-496c-9c52-1a464ce92a55
-plot_vertices(F, [v[i][3]])
+plot_vertices(F, [v_sorted[i][1]])
 
 # ╔═╡ 0c9e7151-4906-4e5e-a274-7f3d2a36dd07
 md"""
@@ -205,39 +208,39 @@ Vamos pegar 4 pontos de partida
 
 # ╔═╡ 0372b717-c18c-4e30-b42e-839c0811e2c4
 begin
-	plt_6, traj_6 = pipe_trajectory(F, A_exp, B_exp, E_exp, G, d, 8.0,v[6], passos=200)
-	plt_6, traj_6 = pipe_trajectory(F, A_exp, B_exp, E_exp, G, d, -8.0,traj_6, passos=300)
+	plt_leste, traj_leste = pipe_trajectory(F, A_exp, B_exp, E_exp, G, d, 8.0,reverse(v_sorted[1]), passos=200)
+	plt_leste, traj_leste = pipe_trajectory(F, A_exp, B_exp, E_exp, G, d, -8.0,traj_leste, passos=300)
 end
 
 # ╔═╡ bf396529-f045-4b00-aac7-9fdc1f02047f
-plt_6
+plt_leste
 
 # ╔═╡ fe099f74-a943-4fa9-8b10-db54714855a9
 begin
-	plt_362, traj_362 = pipe_trajectory(F, A_exp, B_exp, E_exp, G, d, 8.0,v[362], passos=200)
-	plt_362, traj_362 = pipe_trajectory(F, A_exp, B_exp, E_exp, G, d, -8.0,traj_362, passos=300)
+	plt_oeste, traj_oeste = pipe_trajectory(F, A_exp, B_exp, E_exp, G, d, 8.0,reverse(v_sorted[22920]), passos=200)
+	plt_oeste, traj_oeste = pipe_trajectory(F, A_exp, B_exp, E_exp, G, d, -8.0,traj_oeste, passos=300)
 end
 
 # ╔═╡ 3694f734-e34a-4e6f-b6dc-abc3c73bee6c
-plt_362
+plt_oeste
 
 # ╔═╡ 8d7b357e-451a-4098-985d-89c884092fed
 begin
-	_, traj_447 = pipe_trajectory(F, A_exp, B_exp, E_exp, G, d, 8.0,v[447], passos=300)
-	plt_447, traj_447 = pipe_trajectory(F, A_exp, B_exp, E_exp, G, d, -8.0,traj_447, passos=300)
+	plt_norte, traj_norte = pipe_trajectory(F, A_exp, B_exp, E_exp, G, d, 8.0,reverse(v_sorted[14523]), passos=200)
+	plt_norte, traj_norte = pipe_trajectory(F, A_exp, B_exp, E_exp, G, d, -8.0,traj_norte, passos=300)
 end
 
 # ╔═╡ 4bdd0dc6-6f5b-4be2-b41e-aa8f73839bf2
-plt_447
+plt_norte
 
 # ╔═╡ 18c35444-7fbb-495f-823c-f7e3d3c252be
 begin
-	_, traj_37 = pipe_trajectory(F, A_exp, B_exp, E_exp, G, d, 8.0,v[37], passos=300)
-	plt_37, traj_37 = pipe_trajectory(F, A_exp, B_exp, E_exp, G, d, -8.0,traj_37, passos=300)
+	plt_sul, traj_sul = pipe_trajectory(F, A_exp, B_exp, E_exp, G, d, 8.0,reverse(v_sorted[16060]), passos=200)
+	plt_sul, traj_sul = pipe_trajectory(F, A_exp, B_exp, E_exp, G, d, -8.0,traj_sul, passos=300)
 end
 
 # ╔═╡ ae317296-62b3-40ac-99cb-fc6cba3cb3f7
-plt_37
+plt_sul
 
 # ╔═╡ 67aeadc8-a22b-44f5-a45c-7782c59342ab
 md"""
@@ -245,7 +248,7 @@ Todas trajetórias observadas no mesmo plot
 """
 
 # ╔═╡ 0b61751d-646d-40f1-99d3-d61aabeea274
-plot_trajectories(F, [traj_6, traj_362, traj_447, traj_37])
+plot_trajectories(F, [traj_leste, traj_oeste, traj_norte, traj_sul])
 
 # ╔═╡ 2ee46796-0afc-4b05-854c-abb5b32c2f57
 md"""
@@ -253,10 +256,10 @@ Vizualizando demais estados
 """
 
 # ╔═╡ f490a3ea-180b-41a8-a850-2d7052494742
-plot_expanded_state_trajectory([traj_6, traj_362, traj_447, traj_37])
+plot_expanded_state_trajectory([traj_leste, traj_oeste, traj_norte, traj_sul])
 
 # ╔═╡ b0674ad3-758c-4aad-91b2-dc0147691697
-plot_v_state_trajectory([traj_6, traj_362, traj_447, traj_37])
+plot_v_state_trajectory([traj_leste, traj_oeste, traj_norte, traj_sul])
 
 # ╔═╡ Cell order:
 # ╠═f9a4c39e-7ef6-11f1-ba82-979f074de1d9
@@ -280,6 +283,7 @@ plot_v_state_trajectory([traj_6, traj_362, traj_447, traj_37])
 # ╠═87aa2fea-d2ed-4e47-b8b0-fdf30062caa8
 # ╟─2621005a-c65d-4962-9243-18d0daf7d2a3
 # ╠═6d9edc1a-63fd-4c2e-a69b-6e8fd007d828
+# ╠═0ab43590-ed03-4198-b12e-fa3e8297ac34
 # ╠═e8eb024b-a10c-44be-8f6a-1349270e3cc4
 # ╟─11ffd751-41d1-44b4-a8ed-1f533882a1ca
 # ╠═09598248-1558-4a1b-9673-43847b6d9de1
@@ -291,7 +295,7 @@ plot_v_state_trajectory([traj_6, traj_362, traj_447, traj_37])
 # ╟─3694f734-e34a-4e6f-b6dc-abc3c73bee6c
 # ╠═8d7b357e-451a-4098-985d-89c884092fed
 # ╟─4bdd0dc6-6f5b-4be2-b41e-aa8f73839bf2
-# ╟─18c35444-7fbb-495f-823c-f7e3d3c252be
+# ╠═18c35444-7fbb-495f-823c-f7e3d3c252be
 # ╟─ae317296-62b3-40ac-99cb-fc6cba3cb3f7
 # ╟─67aeadc8-a22b-44f5-a45c-7782c59342ab
 # ╠═0b61751d-646d-40f1-99d3-d61aabeea274

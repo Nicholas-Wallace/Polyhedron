@@ -4,26 +4,15 @@
 using Markdown
 using InteractiveUtils
 
-# This Pluto notebook uses @bind for interactivity. When running this notebook outside of Pluto, the following 'mock version' of @bind gives bound variables a default value (instead of an error).
-macro bind(def, element)
-    #! format: off
-    return quote
-        local iv = try Base.loaded_modules[Base.PkgId(Base.UUID("6e696c72-6542-2067-7265-42206c756150"), "AbstractPlutoDingetjes")].Bonds.initial_value catch; b -> missing; end
-        local el = $(esc(element))
-        global $(esc(def)) = Core.applicable(Base.get, el) ? Base.get(el) : iv(el)
-        el
-    end
-    #! format: on
-end
-
-# ╔═╡ d7d2ec55-8de5-40f5-be93-18e1ffc1ef31
-using Pkg
-
 # ╔═╡ 45e5da98-e38c-4795-a6b6-b7f547b98b9d
+#=╠═╡
 Pkg.activate()
+  ╠═╡ =#
 
 # ╔═╡ c11c50fb-fd54-4ace-a3b9-b53d94267287
+#=╠═╡
 Pkg.add("MAT")
+  ╠═╡ =#
 
 # ╔═╡ fb34bda2-7b79-4de6-8bdc-e2ff6d102dc9
 using Revise
@@ -39,12 +28,6 @@ using LinearAlgebra
 
 # ╔═╡ 2094eec6-7d71-4338-886c-722573924746
 using MAT
-
-# ╔═╡ f9a4c39e-7ef6-11f1-ba82-979f074de1d9
-# ╠═╡ disabled = true
-#=╠═╡
-using Pkg
-  ╠═╡ =#
 
 # ╔═╡ b818e60c-86c9-4dcd-b86d-01bf740a3255
 md"""
@@ -179,28 +162,6 @@ begin
            Z      I(n)  Z]
 end
 
-# ╔═╡ 5ba9d134-301e-4a52-b39f-950df23687d5
-begin
-	N = size(Fe, 1)
-	ones_N = ones(N)
-	
-	v1 = calcular_v(Fe, Ee, R)
-	v2 = calcular_v(Fe, Ae * Ee, R)
-	
-	l = ones_N - v1
-	m = ones_N - v1 - v2
-	
-	init_cond_w = vcat(ones_N, vcat(l, m))
-	init_cond_F = [Fe; Fe*Ae; Fe*Ae*Ae]
-	init_cond_F, init_cond_w = elimred(init_cond_F, init_cond_w)
-end
-
-# ╔═╡ 4ac93b77-7567-430f-82fe-d2e2ed75a893
-# ╠═╡ disabled = true
-#=╠═╡
-init_cond_F, init_cond_w = admissable_initCond(A_exp, B_exp*G, F, d, w; fixed_d=true)
-  ╠═╡ =#
-
 # ╔═╡ a97a764b-0b36-426e-99b9-69b7fbe1f543
 md"""
 Vou tentar multiplas trajetórias para a mesma referência mas com condições iniciais diferentes
@@ -214,10 +175,14 @@ Considerando o vetor de condicoes iniciais nessa ordem:
 """
 
 # ╔═╡ 87aa2fea-d2ed-4e47-b8b0-fdf30062caa8
+#=╠═╡
 v = get_extVert_tuple(init_cond_F, init_cond_w, 4)
+  ╠═╡ =#
 
 # ╔═╡ 68b3b178-67ae-4d13-b37c-9b7b17e12220
+#=╠═╡
 v_sorted = y = sort(v; by = x -> x[1][1])
+  ╠═╡ =#
 
 # ╔═╡ 2621005a-c65d-4962-9243-18d0daf7d2a3
 md"""
@@ -225,7 +190,9 @@ Todos os vertices:
 """
 
 # ╔═╡ 6d9edc1a-63fd-4c2e-a69b-6e8fd007d828
+#=╠═╡
 plot_vertices(F, p[1] for p in v_sorted)
+  ╠═╡ =#
 
 # ╔═╡ e8eb024b-a10c-44be-8f6a-1349270e3cc4
 # leste 6, leste 89, norte [362, 364], sul 37, oeste 447, leste 39
@@ -236,10 +203,47 @@ fui procurando por todos os vertices no poliedro
 """
 
 # ╔═╡ 09598248-1558-4a1b-9673-43847b6d9de1
+#=╠═╡
 @bind i Slider(1:size(v_sorted, 1), show_value=true)
+  ╠═╡ =#
 
 # ╔═╡ dbe8ea2f-6f3c-496c-9c52-1a464ce92a55
+#=╠═╡
 plot_vertices(F, [v_sorted[i][1]])
+  ╠═╡ =#
+
+# ╔═╡ 679242ee-d893-4397-a37c-6221718ad252
+md"""
+iniciando com ref = 0
+"""
+
+# ╔═╡ 67a475db-9001-4f23-8bb1-b368a786a401
+#=╠═╡
+begin
+	plt_sul_zero, traj_sul_zero = pipe_trajectory(F, A_exp, B_exp, E_exp, G, d, 0.0,reverse(v_sorted[94108]), passos=300)
+end
+  ╠═╡ =#
+
+# ╔═╡ dbbfb418-92c1-4929-bbbd-6e8ae6da9520
+#=╠═╡
+begin
+	plt_norte_zero, traj_norte_zero = pipe_trajectory(F, A_exp, B_exp, E_exp, G, d, 0.0,reverse(v_sorted[31824]), passos=300)
+end
+  ╠═╡ =#
+
+# ╔═╡ 8754a294-2985-4711-8824-cbad593d51f5
+#=╠═╡
+begin
+	_, traj_leste_zero = pipe_trajectory(F, A_exp, B_exp, E_exp, G, d, 0.0,reverse(v_sorted[107852]), passos=300)
+end
+  ╠═╡ =#
+
+# ╔═╡ 106c7703-0207-48eb-9e21-0df7e9130302
+#=╠═╡
+begin
+	_, traj_oeste_zero = pipe_trajectory(F, A_exp, B_exp, E_exp, G, d, 0.0,reverse(v_sorted[9536]), passos=300)
+end
+  ╠═╡ =#
 
 # ╔═╡ 0c9e7151-4906-4e5e-a274-7f3d2a36dd07
 md"""
@@ -247,10 +251,12 @@ Vamos pegar 4 pontos de partida
 """
 
 # ╔═╡ 0372b717-c18c-4e30-b42e-839c0811e2c4
+#=╠═╡
 begin
 	plt_sul, traj_sul = pipe_trajectory(F, A_exp, B_exp, E_exp, G, d, 8.0,reverse(v_sorted[94108]), passos=300)
 	plt_sul, traj_sul = pipe_trajectory(F, A_exp, B_exp, E_exp, G, d, -8.0,traj_sul, passos=300)
 end
+  ╠═╡ =#
 
 # ╔═╡ bf396529-f045-4b00-aac7-9fdc1f02047f
 #=╠═╡
@@ -258,10 +264,12 @@ plt_sul
   ╠═╡ =#
 
 # ╔═╡ fe099f74-a943-4fa9-8b10-db54714855a9
+#=╠═╡
 begin
 	plt_norte, traj_norte = pipe_trajectory(F, A_exp, B_exp, E_exp, G, d, 8.0,reverse(v_sorted[31824]), passos=300)
 	plt_norte, traj_norte = pipe_trajectory(F, A_exp, B_exp, E_exp, G, d, -8.0,traj_norte, passos=300)
 end
+  ╠═╡ =#
 
 # ╔═╡ 3694f734-e34a-4e6f-b6dc-abc3c73bee6c
 #=╠═╡
@@ -269,10 +277,12 @@ plt_norte
   ╠═╡ =#
 
 # ╔═╡ 8d7b357e-451a-4098-985d-89c884092fed
+#=╠═╡
 begin
 	_, traj_leste = pipe_trajectory(F, A_exp, B_exp, E_exp, G, d, 8.0,reverse(v_sorted[107852]), passos=300)
 	plt_leste, traj_leste = pipe_trajectory(F, A_exp, B_exp, E_exp, G, d, -8.0,traj_leste, passos=300)
 end
+  ╠═╡ =#
 
 # ╔═╡ 4bdd0dc6-6f5b-4be2-b41e-aa8f73839bf2
 #=╠═╡
@@ -280,10 +290,12 @@ plt_leste
   ╠═╡ =#
 
 # ╔═╡ 18c35444-7fbb-495f-823c-f7e3d3c252be
+#=╠═╡
 begin
 	_, traj_oeste = pipe_trajectory(F, A_exp, B_exp, E_exp, G, d, 8.0,reverse(v_sorted[9536]), passos=300)
 	plt_oeste, traj_oeste = pipe_trajectory(F, A_exp, B_exp, E_exp, G, d, -8.0,traj_oeste, passos=300)
 end
+  ╠═╡ =#
 
 # ╔═╡ ae317296-62b3-40ac-99cb-fc6cba3cb3f7
 #=╠═╡
@@ -296,7 +308,9 @@ Todas trajetórias observadas no mesmo plot
 """
 
 # ╔═╡ 0b61751d-646d-40f1-99d3-d61aabeea274
+#=╠═╡
 plot_trajectories(F, [traj_norte, traj_sul, traj_leste, traj_oeste])
+  ╠═╡ =#
 
 # ╔═╡ 2ee46796-0afc-4b05-854c-abb5b32c2f57
 md"""
@@ -304,10 +318,14 @@ Vizualizando demais estados
 """
 
 # ╔═╡ f490a3ea-180b-41a8-a850-2d7052494742
+#=╠═╡
 plot_expanded_state_trajectory([traj_norte, traj_sul, traj_leste, traj_oeste])
+  ╠═╡ =#
 
 # ╔═╡ b0674ad3-758c-4aad-91b2-dc0147691697
+#=╠═╡
 plot_v_state_trajectory([traj_norte, traj_sul, traj_leste, traj_oeste])
+  ╠═╡ =#
 
 # ╔═╡ f29a1973-7a18-45b4-8946-bdf36afb4592
 md"""
@@ -315,6 +333,7 @@ Passando as matrizes para um arquivo .mat
 """
 
 # ╔═╡ 6bf29487-e6af-41c0-9899-42593ce22649
+#=╠═╡
 begin
 	K = [-0.005895724889024788	-0.004852451763849023	0.00023072302830382636	0.02523718111724989;
 	-0.0028750606375070767	0.0006813146818040654	-0.0002771916753272453	0.0007857547976951455;
@@ -329,23 +348,35 @@ begin
 	u_oeste = [G*x for x in traj_oeste]
 	u_oeste = [elem[1] for elem in u_oeste]
 end
+  ╠═╡ =#
 
 # ╔═╡ eb96fe20-7b7a-4004-9e27-73eb4293e873
+#=╠═╡
 plot_along_k([u_leste, u_oeste, u_norte, u_sul])
+  ╠═╡ =#
 
 # ╔═╡ b7e3dcbf-b17a-4ba3-8e43-7f9e1e4327db
+#=╠═╡
 maximum(abs.(u_leste))
+  ╠═╡ =#
 
 # ╔═╡ 0d119224-7aee-44c3-a2c0-2a01f11d3a46
+#=╠═╡
 maximum(abs.(u_oeste))
+  ╠═╡ =#
 
 # ╔═╡ 5fc556df-9203-4a8b-ab5d-e6c683f574bd
+#=╠═╡
 maximum(abs.(u_norte))
+  ╠═╡ =#
 
 # ╔═╡ 30129ad8-a6d1-45a2-821c-48a5fdb4e3ea
+#=╠═╡
 maximum(abs.(u_sul))
+  ╠═╡ =#
 
 # ╔═╡ dc0468c1-24bd-48b0-ac1e-aa0c4825fa86
+#=╠═╡
 begin
 	file = matopen("results_logs/artigo_cba_new_cond.mat", "w")
 	
@@ -354,6 +385,11 @@ begin
 	write(file, "traj_leste", traj_leste)
 	write(file, "traj_oeste", traj_oeste)
 
+	write(file, "traj_norte_zero", traj_norte_zero[2:end])
+	write(file, "traj_sul_zero", traj_sul_zero[2:end])
+	write(file, "traj_leste_zero", traj_leste_zero[2:end])
+	write(file, "traj_oeste_zero", traj_oeste_zero[2:end])
+	
 	write(file, "F", F)
 	write(file, "G", G)
 
@@ -369,6 +405,45 @@ begin
 	
 	close(file)
 end
+  ╠═╡ =#
+
+# ╔═╡ 0eb1e9ba-f74d-4604-a348-9428e57e3c79
+
+
+# ╔═╡ 5ba9d134-301e-4a52-b39f-950df23687d5
+#=╠═╡
+begin
+	N = size(Fe, 1)
+	ones_N = ones(N)
+	
+	v1 = calcular_v(Fe, Ee, R)
+	v2 = calcular_v(Fe, Ae * Ee, R)
+	
+	l = ones_N - v1
+	m = ones_N - v1 - v2
+	
+	init_cond_w = vcat(ones_N, vcat(l, m))
+	init_cond_F = [Fe; Fe*Ae; Fe*Ae*Ae]
+	init_cond_F, init_cond_w = elimred(init_cond_F, init_cond_w)
+end
+  ╠═╡ =#
+
+# ╔═╡ d7d2ec55-8de5-40f5-be93-18e1ffc1ef31
+#=╠═╡
+using Pkg
+  ╠═╡ =#
+
+# ╔═╡ f9a4c39e-7ef6-11f1-ba82-979f074de1d9
+# ╠═╡ disabled = true
+#=╠═╡
+using Pkg
+  ╠═╡ =#
+
+# ╔═╡ 4ac93b77-7567-430f-82fe-d2e2ed75a893
+# ╠═╡ disabled = true
+#=╠═╡
+init_cond_F, init_cond_w = admissable_initCond(A_exp, B_exp*G, F, d, w; fixed_d=true)
+  ╠═╡ =#
 
 # ╔═╡ Cell order:
 # ╠═f9a4c39e-7ef6-11f1-ba82-979f074de1d9
@@ -401,6 +476,11 @@ end
 # ╟─11ffd751-41d1-44b4-a8ed-1f533882a1ca
 # ╠═09598248-1558-4a1b-9673-43847b6d9de1
 # ╠═dbe8ea2f-6f3c-496c-9c52-1a464ce92a55
+# ╟─679242ee-d893-4397-a37c-6221718ad252
+# ╠═67a475db-9001-4f23-8bb1-b368a786a401
+# ╠═dbbfb418-92c1-4929-bbbd-6e8ae6da9520
+# ╠═8754a294-2985-4711-8824-cbad593d51f5
+# ╠═106c7703-0207-48eb-9e21-0df7e9130302
 # ╟─0c9e7151-4906-4e5e-a274-7f3d2a36dd07
 # ╠═0372b717-c18c-4e30-b42e-839c0811e2c4
 # ╟─bf396529-f045-4b00-aac7-9fdc1f02047f
@@ -426,3 +506,4 @@ end
 # ╠═5fc556df-9203-4a8b-ab5d-e6c683f574bd
 # ╠═30129ad8-a6d1-45a2-821c-48a5fdb4e3ea
 # ╠═dc0468c1-24bd-48b0-ac1e-aa0c4825fa86
+# ╠═0eb1e9ba-f74d-4604-a348-9428e57e3c79

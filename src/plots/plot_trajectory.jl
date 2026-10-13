@@ -18,14 +18,14 @@ function plot_trajectory!(plt, traj::Matrix{Float64})
         xlabel = "x1",
         ylabel = "x2")
 	
-  scatter!(plt, traj[1, 1], traj[2, 1], 
+  scatter!(plt, [traj[1, 1]], [traj[2, 1]], 
         marker = :x, 
         markersize = 7, 
         markercolor = :green, 
         label = "Start")
 
   # Add a red marker at the end
-  scatter!(plt, traj[1, end], traj[2, end], 
+  scatter!(plt, [traj[1, end]], [traj[2, end]], 
         marker = :x, 
         markersize = 7, 
         markercolor = :black, 

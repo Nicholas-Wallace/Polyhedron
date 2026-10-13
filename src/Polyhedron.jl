@@ -10,7 +10,6 @@ include("utils/cond_iniciais_adm.jl")
 include("utils/vet_eq_spc.jl")
 include("utils/outros.jl")
 include("trajectories/trajectory.jl")
-include("trajectories/trajectory_delay.jl")
 include("utils/poly_projection.jl")
 
 

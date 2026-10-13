@@ -1,26 +1,24 @@
 """
-    plot_poly(inq_matrix, w) -> Plot
+    plot_poly(ip::InvariantPolyhedron) -> Plot
 
-plota um poliedro definido pela inequação
-
-    inq_matrix <= w
+plota um poliedro p-invariante definido por `ip`. O poliedro deve estar em 2D.
 """
-function plot_poly(inq_matrix, w)
-    poly_F = get_shape(inq_matrix, w)
-    
+function plot_poly(ip::InvariantPolyhedron)
+    size(ip.F, 2) == 2 ||
+        error("plot_poly requires a 2D InvariantPolyhedron, got $(size(ip.F, 2)) columns")
+
+    poly_F = get_shape(ip)
+
     # Plota a figura
     plt = plot(poly_F, fc=plot_color(:blue, 0.1), label=false, title="Polyhedron")
     xlabel!("x1")
     ylabel!("x2")
-    
+
     return plt
 end
 
-function get_shape(inq_matrix, w)
-    hrep_F = hrep(inq_matrix, w)
-    P = vrep(polyhedron(hrep_F, CDDLib.Library()))
-
-    vertices = [Tuple(vet[1:2]) for vet in points(P)]
+function get_shape(ip::InvariantPolyhedron)
+    vertices = [Tuple(vet[1:2]) for vet in points(ip.vrep)]
 
     # Acha o valor do centróide do poliedro
     cx = sum(v[1] for v in vertices) / length(vertices)

@@ -1,30 +1,32 @@
 
 """
-    is_pinvariant(system::LTISystem, U, X; SOF = false) -> Float
+    is_pinvariant(system::SLIT, U, X) -> InvariantPolyhedron
 
 Verifica se o poliedro X é p-invariante w.r.t
 
     x[k+1] = system.A*x[k] + system.B*u[k]
     y[k+1] = system.C*x[k]
 
-E retorna o valor de lambda
+O tipo de realimentação é lido de `system.feedback`:
+  SOF -> u[k] = K*y[k] = K*system.C*x[k]
+  SSF -> u[k] = F*x[k]
+  OL  -> não suportado (não há ganho a otimizar)
 
-Essa função suporta realimentação de estado e de saída
+Após a solução do Knitro o ganho encontrado é escrito em `system.G`.
+Retorna um `InvariantPolyhedron` com o valor de lambda e as representações do
+poliedro.
 
 X é o poliedro a ser verificado
 U é a restrição na entrada
 """
-
-function is_pinvariant(system::LTISystem, U::Matrix{Float64}, X::Matrix{Float64}; SOF::Bool=false)
+function is_pinvariant(system::SLIT, U::Matrix{Float64}, X::Matrix{Float64})
 
   model = Model() do
     return NEOSServer.Optimizer(; email="wallace.lopes.162@ufrn.edu.br", solver="Knitro")
   end
 
   #Parâmetros
-  n = size(system.A, 1); #Ordem do sistema (Linhas de A)
-  m = size(system.B, 2); #Número de Entradas (Colunas de B)
-  p = size(system.C, 1); #Número de Saídas (Linhas de C)
+  n, m, p = checkdims(system.A, system.B, system.C)
 
   lx = size(X, 1); #Número de linhas de X
   lu = size(U, 1); #Número de linhas de U
@@ -33,7 +35,7 @@ function is_pinvariant(system::LTISystem, U::Matrix{Float64}, X::Matrix{Float64}
   phi = ones(lu);
 
 
-  if SOF # realimentação de saida 
+  if system.feedback == SOF # realimentação de saida 
     @variable(model, 0 <= H[1:lx, 1:lx] <= 100)
     @variable(model, K[1:m, 1:p])
     @variable(model, 0 <= M[1:lu, 1:lx] <= 100)
@@ -59,11 +61,11 @@ function is_pinvariant(system::LTISystem, U::Matrix{Float64}, X::Matrix{Float64}
     M = value.(M)
     lambda = value.(lambda)
 
-    result = Dict("H" => H, "K" => K, "M" => M, "lambda" => lambda)
+    system.G = K
 
-    return result
+    return InvariantPolyhedron(X, xi, lambda, system)
 
-  else # realimentação de estado
+  elseif system.feedback == SSF # realimentação de estado
 
     @variable(model, 0 <= H[1:lx, 1:lx] <= 100)
     @variable(model, F[1:m, 1:n])
@@ -91,22 +93,32 @@ function is_pinvariant(system::LTISystem, U::Matrix{Float64}, X::Matrix{Float64}
     F = value.(F)
     M = value.(M)
     lambda = value.(lambda)
-    result = Dict("H" => H, "F" => F, "M" => M, "lambda" => lambda)
 
-    return result
+    system.G = F
 
+    return InvariantPolyhedron(X, xi, lambda, system)
+
+  else
+    error("realimentação OL não possui ganho a otimizar")
   end
 end
 
 
 """
-    is_pinvariant(system::SystemDelayed, X; symetric=true) -> Dict{String, Float}
+    is_pinvariant(system::SystemDelayed, X; symetric=true) -> InvariantPolyhedron
 
 Verifica se o poliedro X é p-invariante w.r.t
 
     x[k+1] = system.A*x[k] + system.Ad*x[k - system.d]
 
-E retorna um dicionario com todas as matrizes relevantes e o lambda
+O tipo de realimentação é lido de `system.feedback`:
+
+  SSF -> u[k] = K*x[k]
+  SOF -> u[k] = G*system.C*x[k] (formulação a ser implementada)
+
+Após a solução do Knitro o ganho encontrado é escrito em `system.G`.
+Retorna um `InvariantPolyhedron` com todas as representações relevantes e o
+lambda.
 
 Onde system.d é o tamanho do atraso
 """
@@ -121,6 +133,12 @@ function is_pinvariant(system::SystemDelayed, X; symetric=true)
   x = size(X, 1) # numero de linhas de x
   w = ones(x)
 
+  if system.feedback == SOF # realimentação de saida
+    # TODO: formular o problema de otimização para SOF
+    error("Formulação SOF para SystemDelayed ainda não implementada")
+  end
+
+  # realimentação de estado (SSF)
   @variable(model, 0 <= lambda <= 1)
 
   if symetric
@@ -152,13 +170,10 @@ function is_pinvariant(system::SystemDelayed, X; symetric=true)
 
     lambda = value(lambda)
     K = value.(K)
-    H = value.(H1) + value.(H2)
-    L = value.(L1) + value.(L2)
 
-    # retorna um dicionário com lambda e as matrizes K, H e L
-    result = Dict("lambda" => lambda, "K" => K, "H" => H, "L" => L)
+    system.G = K
 
-    return result
+    return InvariantPolyhedron(X, w, lambda, system)
   end
 
   @variable(model, K[1:n, 1:n])
@@ -185,10 +200,8 @@ function is_pinvariant(system::SystemDelayed, X; symetric=true)
 
   lambda = value(lambda)
   K = value.(K)
-  H = value.(H)
-  L = value.(L)
 
-  result = Dict("lambda" => lambda, "K" => K, "H" => H, "L" => L)
+  system.G = K
 
-  return result
+  return InvariantPolyhedron(X, w, lambda, system)
 end

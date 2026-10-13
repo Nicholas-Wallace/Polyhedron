@@ -8,6 +8,10 @@ using Test
         include("method_test.jl")
     end
 
+    @testset "types" begin
+        include("type_test.jl")
+    end
+
 end
 
 

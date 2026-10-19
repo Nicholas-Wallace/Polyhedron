@@ -17,6 +17,29 @@ function plot_poly(ip::InvariantPolyhedron)
     return plt
 end
 
+"""
+    plot_poly(ip1::InvariantPolyhedron, ip2::InvariantPolyhedron; label1, label2, legendpos) -> Plot
+
+plota dois poliedros p-invariantes `ip1` e `ip2` em 2D, com um rótulo para cada um.
+A posição da legenda pode ser definida por `legendpos` (padrão: `:bottomright`).
+"""
+function plot_poly(ip1::InvariantPolyhedron, ip2::InvariantPolyhedron;
+                   label1="SSF", label2="SOF", legendpos=:bottomright)
+    size(ip1.F, 2) == 2 && size(ip2.F, 2) == 2 ||
+        error("plot_poly requires 2D InvariantPolyhedrons, got $(size(ip1.F, 2)) and $(size(ip2.F, 2)) columns")
+
+    poly_F1 = get_shape(ip1)
+    poly_F2 = get_shape(ip2)
+
+    plt = plot(poly_F1, fc=plot_color(:blue, 0.1), label=label1, title="Polyhedrons",
+               legend=legendpos)
+    plot!(plt, poly_F2, fc=plot_color(:red, 0.1), label=label2)
+    xlabel!("SSF")
+    ylabel!("SOF")
+
+    return plt
+end
+
 function get_shape(ip::InvariantPolyhedron)
     vertices = [Tuple(vet[1:2]) for vet in points(ip.vrep)]
 

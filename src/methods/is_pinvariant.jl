@@ -16,10 +16,15 @@ Após a solução do Knitro o ganho encontrado é escrito em `system.G`.
 Retorna um `InvariantPolyhedron` com o valor de lambda e as representações do
 poliedro.
 
+Com `verbose=true` retorna uma `NamedTuple` `(poly=..., matrices=...)`, onde
+`matrices` é um `Dict{String,Any}` com as matrizes do programa linear
+(problema: `A`, `B`, `C`, `U`, `X`; variáveis: `H`, `K`/`F`, `M`, `lambda`;
+e `status`).
+
 X é o poliedro a ser verificado
 U é a restrição na entrada
 """
-function is_pinvariant(system::SLIT, U::Matrix{Float64}, X::Matrix{Float64})
+function is_pinvariant(system::SLIT, U::Matrix{Float64}, X::Matrix{Float64}; verbose::Bool=false)
 
   model = Model() do
     return NEOSServer.Optimizer(; email="wallace.lopes.162@ufrn.edu.br", solver="Knitro")
@@ -63,7 +68,16 @@ function is_pinvariant(system::SLIT, U::Matrix{Float64}, X::Matrix{Float64})
 
     system.G = K
 
-    return InvariantPolyhedron(X, xi, lambda, system)
+    ip = InvariantPolyhedron(X, xi, lambda, system)
+
+    matrices = Dict{String,Any}(
+      "A" => system.A, "B" => system.B, "C" => system.C,
+      "U" => U, "X" => X,
+      "H" => H, "K" => K, "M" => M, "lambda" => lambda,
+      "status" => string(termination_status(model)),
+    )
+
+    return verbose ? (poly=ip, matrices=matrices) : ip
 
   elseif system.feedback == SSF # realimentação de estado
 
@@ -96,7 +110,16 @@ function is_pinvariant(system::SLIT, U::Matrix{Float64}, X::Matrix{Float64})
 
     system.G = F
 
-    return InvariantPolyhedron(X, xi, lambda, system)
+    ip = InvariantPolyhedron(X, xi, lambda, system)
+
+    matrices = Dict{String,Any}(
+      "A" => system.A, "B" => system.B, "C" => system.C,
+      "U" => U, "X" => X,
+      "H" => H, "F" => F, "M" => M, "lambda" => lambda,
+      "status" => string(termination_status(model)),
+    )
+
+    return verbose ? (poly=ip, matrices=matrices) : ip
 
   else
     error("realimentação OL não possui ganho a otimizar")
@@ -105,7 +128,7 @@ end
 
 
 """
-    is_pinvariant(system::SystemDelayed, X; symetric=true) -> InvariantPolyhedron
+    is_pinvariant(system::SystemDelayed, X; symetric=true, verbose=false) -> InvariantPolyhedron
 
 Verifica se o poliedro X é p-invariante w.r.t
 
@@ -120,9 +143,14 @@ Após a solução do Knitro o ganho encontrado é escrito em `system.G`.
 Retorna um `InvariantPolyhedron` com todas as representações relevantes e o
 lambda.
 
+Com `verbose=true` retorna uma `NamedTuple` `(poly=..., matrices=...)`, onde
+`matrices` é um `Dict{String,Any}` com as matrizes do programa linear
+(`A`, `Ad`, `X`, `w`, `d`, o ganho `K`, as matrizes de Farkas e `lambda`,
+além de `status`).
+
 Onde system.d é o tamanho do atraso
 """
-function is_pinvariant(system::SystemDelayed, X; symetric=true)
+function is_pinvariant(system::SystemDelayed, X; symetric=true, verbose::Bool=false)
   model = Model() do
     return NEOSServer.Optimizer(; email="wallace.lopes.162@ufrn.edu.br", solver="Knitro")
   end
@@ -170,10 +198,24 @@ function is_pinvariant(system::SystemDelayed, X; symetric=true)
 
     lambda = value(lambda)
     K = value.(K)
+    H1 = value.(H1); H2 = value.(H2)
+    L1 = value.(L1); L2 = value.(L2)
+    M1 = value.(M1); M2 = value.(M2)
+    N1 = value.(N1); N2 = value.(N2)
 
     system.G = K
 
-    return InvariantPolyhedron(X, w, lambda, system)
+    ip = InvariantPolyhedron(X, w, lambda, system)
+
+    matrices = Dict{String,Any}(
+      "A" => system.A, "Ad" => system.Ad, "X" => X, "w" => w, "d" => system.d,
+      "K" => K,
+      "H1" => H1, "H2" => H2, "L1" => L1, "L2" => L2,
+      "M1" => M1, "M2" => M2, "N1" => N1, "N2" => N2,
+      "lambda" => lambda, "status" => string(termination_status(model)),
+    )
+
+    return verbose ? (poly=ip, matrices=matrices) : ip
   end
 
   @variable(model, K[1:n, 1:n])
@@ -200,8 +242,20 @@ function is_pinvariant(system::SystemDelayed, X; symetric=true)
 
   lambda = value(lambda)
   K = value.(K)
+  H = value.(H)
+  L = value.(L)
+  M = value.(M)
+  N = value.(N)
 
   system.G = K
 
-  return InvariantPolyhedron(X, w, lambda, system)
+  ip = InvariantPolyhedron(X, w, lambda, system)
+
+  matrices = Dict{String,Any}(
+    "A" => system.A, "Ad" => system.Ad, "X" => X, "w" => w, "d" => system.d,
+    "K" => K, "H" => H, "L" => L, "M" => M, "N" => N,
+    "lambda" => lambda, "status" => string(termination_status(model)),
+  )
+
+  return verbose ? (poly=ip, matrices=matrices) : ip
 end

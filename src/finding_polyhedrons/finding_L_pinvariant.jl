@@ -1,6 +1,9 @@
 """
     finding_L_pinvariant(system::SLIT, U, X; ll = 6, t = 8, pond = 0.02, verbose = false) -> InvariantPolyhedron
 
+`U` pode ser uma `Matrix` ou `nothing` (nesse último caso, também se pode chamar
+`finding_L_pinvariant(system, X; ...)`).
+
 Procuramos um poliedro de f linhas que seja invariante w.r.t
 
     x[k+1] = system.A*x[k] + system.B*u[k]
@@ -19,9 +22,14 @@ Com `verbose=true` retorna uma `NamedTuple` `(poly=..., matrices=...)`, onde
 `gamma`, o ganho `K`/`F`, `lambda`; e `status`).
 """
 
-function finding_L_pinvariant(system::SLIT, U::Matrix, X::Matrix; ll=6, t=8, pond=0.02, verbose::Bool=false)
+function finding_L_pinvariant(system::SLIT, U::Union{Matrix,Nothing}, X::Matrix; ll=6, t=8, pond=0.02, verbose::Bool=false)
   model = Model() do
     return NEOSServer.Optimizer(; email="wallace.lopes.162@ufrn.edu.br", solver="Knitro")
+  end
+
+  # TODO: tratar U === nothing (pular M, phi e as restrições u_included0/u_included1)
+  if U === nothing
+    error("finding_L_pinvariant: caso sem U ainda não implementado (TODO)")
   end
 
   #Parâmetros
@@ -141,8 +149,20 @@ function finding_L_pinvariant(system::SLIT, U::Matrix, X::Matrix; ll=6, t=8, pon
   end
 end
 
+"""
+    finding_L_pinvariant(system::SLIT, X::Matrix; ll = 6, t = 8, pond = 0.02, verbose = false) -> InvariantPolyhedron
+
+Versão sem restrição de entrada: equivale a chamar com `U = nothing`.
+"""
+function finding_L_pinvariant(system::SLIT, X::Matrix; ll=6, t=8, pond=0.02, verbose::Bool=false)
+  return finding_L_pinvariant(system, nothing, X; ll=ll, t=t, pond=pond, verbose=verbose)
+end
+
 """ 
   finding_L_pinvariant(system::SystemDelayed, U::Matrix, X::Matrix; lambda=0.99, time=10, lf=10)  -> Dict{String, Matrix{Float}}
+
+`U` pode ser uma `Matrix` ou `nothing` (nesse último caso, também se pode chamar
+`finding_L_pinvariant(system, X; ...)`).
 
 Procuramos um poliedro de f linhas que seja invariante w.r.t
 
@@ -158,10 +178,15 @@ Retorna um dicionario com:
 o poliedro encontrado, a matriz de ganho
 lambda e todas as matrizes utilizadas no problema de otimização 
 """
-function finding_L_pinvariant(system::SystemDelayed, U::Matrix, X::Matrix; time=10, lf=10) 
+function finding_L_pinvariant(system::SystemDelayed, U::Union{Matrix,Nothing}, X::Matrix; time=10, lf=10) 
    
     model = Model() do
         return NEOSServer.Optimizer(; email = "wallace.lopes.162@ufrn.edu.br", solver = "Knitro")
+    end
+
+    # TODO: tratar U === nothing (usar U nas restrições de entrada u_included0/u_included1)
+    if U === nothing
+        error("finding_L_pinvariant: caso sem U ainda não implementado (TODO)")
     end
 
     #Parâmetros
@@ -295,4 +320,13 @@ function finding_L_pinvariant(system::SystemDelayed, U::Matrix, X::Matrix; time=
     print(termination_status(model))
 
     return result
+end
+
+"""
+    finding_L_pinvariant(system::SystemDelayed, X::Matrix; time=10, lf=10) -> Dict{String, Matrix{Float64}}
+
+Versão sem restrição de entrada: equivale a chamar com `U = nothing`.
+"""
+function finding_L_pinvariant(system::SystemDelayed, X::Matrix; time=10, lf=10)
+    return finding_L_pinvariant(system, nothing, X; time=time, lf=lf)
 end

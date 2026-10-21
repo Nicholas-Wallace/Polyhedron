@@ -24,24 +24,56 @@ plota dois poliedros p-invariantes `ip1` e `ip2` em 2D, com um rótulo para cada
 A posição da legenda pode ser definida por `legendpos` (padrão: `:bottomright`).
 """
 function plot_poly(ip1::InvariantPolyhedron, ip2::InvariantPolyhedron;
-                   label1="SSF", label2="SOF", legendpos=:bottomright)
+                   label1="Poliedro Invariante", label2="Poliedro Auxiliar", title="Polyhedrons", legendpos=:bottomright)
     size(ip1.F, 2) == 2 && size(ip2.F, 2) == 2 ||
         error("plot_poly requires 2D InvariantPolyhedrons, got $(size(ip1.F, 2)) and $(size(ip2.F, 2)) columns")
 
     poly_F1 = get_shape(ip1)
     poly_F2 = get_shape(ip2)
 
-    plt = plot(poly_F1, fc=plot_color(:blue, 0.1), label=label1, title="Polyhedrons",
-               legend=legendpos)
+    plt = plot(poly_F1, fc=plot_color(:blue, 0.1), label=label1, title=title,
+               legend=legendpos, aspect_ratio=:equal)
     plot!(plt, poly_F2, fc=plot_color(:red, 0.1), label=label2)
-    xlabel!("SSF")
-    ylabel!("SOF")
 
     return plt
 end
 
 function get_shape(ip::InvariantPolyhedron)
     vertices = [Tuple(vet[1:2]) for vet in points(ip.vrep)]
+
+    # Acha o valor do centróide do poliedro
+    cx = sum(v[1] for v in vertices) / length(vertices)
+    cy = sum(v[2] for v in vertices) / length(vertices)
+
+    # Ordena com base no ângulo do vêrtice em relação ao centróide
+    sort!(vertices, by = v -> atan(v[2] - cy, v[1] - cx))
+
+    return Shape(vertices)
+end
+
+"""
+    plot_poly(inq_matrix, w) -> Plot
+
+plota um poliedro definido pela inequação
+
+    inq_matrix <= w
+"""
+function plot_poly(inq_matrix, w)
+    poly_F = get_shape(inq_matrix, w)
+    
+    # Plota a figura
+    plt = plot(poly_F, fc=plot_color(:blue, 0.1), label=false, title="Polyhedron")
+    xlabel!("x1")
+    ylabel!("x2")
+    
+    return plt
+end
+
+function get_shape(inq_matrix, w)
+    hrep_F = hrep(inq_matrix, w)
+    P = vrep(polyhedron(hrep_F, CDDLib.Library()))
+
+    vertices = [Tuple(vet[1:2]) for vet in points(P)]
 
     # Acha o valor do centróide do poliedro
     cx = sum(v[1] for v in vertices) / length(vertices)

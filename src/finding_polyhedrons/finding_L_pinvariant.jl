@@ -178,7 +178,12 @@ Retorna um dicionario com:
 o poliedro encontrado, a matriz de ganho
 lambda e todas as matrizes utilizadas no problema de otimização 
 """
-function finding_L_pinvariant(system::SystemDelayed, U::Union{Matrix,Nothing}, X::Matrix; time=10, lf=10) 
+function finding_L_pinvariant(system::SystemDelayed, U::Matrix, X::Matrix; time=10, lf=10) 
+
+    A = system.A
+    B = system.Ad
+    C = system.C
+    d = system.d
    
     model = Model() do
         return NEOSServer.Optimizer(; email = "wallace.lopes.162@ufrn.edu.br", solver = "Knitro")
@@ -192,8 +197,6 @@ function finding_L_pinvariant(system::SystemDelayed, U::Union{Matrix,Nothing}, X
     #Parâmetros
     n = size(A, 1); #Ordem do sistema (Linhas de A)
     m = size(B, 2); #Número de Entradas (Colunas de B)
-    r = size(R, 1); #Número de linhas das restrições em r[k]
-    s = size(S, 1); #Número de linhas da matriz das restrições de X[k]
 
     ones_f = ones(lf)
     ones_r = ones(r)
@@ -329,4 +332,57 @@ Versão sem restrição de entrada: equivale a chamar com `U = nothing`.
 """
 function finding_L_pinvariant(system::SystemDelayed, X::Matrix; time=10, lf=10)
     return finding_L_pinvariant(system, nothing, X; time=time, lf=lf)
+end
+
+"""
+    finding_L_pinvariant(system::LTIDisturbanceDelayedInput, S, R, V; lambda=0.99, time=10, lf=10) -> InvariantPolyhedron
+
+Procura um poliedro `F x <= ones(lf)` invariante w.r.t.
+
+    x[k+1] = system.A*x[k] + system.B*u[k-d] + system.E*w[k]
+    y[k] = system.C*x[k]
+
+com realimentação de estado (`SSF`), isto é, `u[k] = G*x[k]`.
+
+`S`, `R` e `V` são as matrizes das restrições de estado, distúrbio e entrada:
+
+    S*x <= ones(size(S, 1))
+    R*w <= ones(size(R, 1))
+    V*u <= ones(size(V, 1))
+
+A formulação SOF ainda não está implementada. Retorna um `InvariantPolyhedron`
+e escreve o ganho encontrado em `system.G`.
+"""
+function finding_L_pinvariant(system::LTIDisturbanceDelayedInput, S::AbstractMatrix, R::AbstractMatrix, V::AbstractMatrix; lambda=0.99, time=10, lf=10)
+    if system.feedback == SOF
+        error("finding_L_pinvariant(::LTIDisturbanceDelayedInput): formulação SOF ainda não implementada (TODO)")
+    elseif system.feedback == OL
+        error("finding_L_pinvariant(::LTIDisturbanceDelayedInput): realimentação OL não possui ganho a otimizar")
+    end
+
+    n = size(system.A, 1)
+    m = size(system.B, 2)
+    q = size(system.E, 2)
+
+    size(S, 2) == n ||
+        throw(DimensionMismatch("S deve ter $n colunas (s×n), recebido $(size(S))"))
+    size(R, 2) == q ||
+        throw(DimensionMismatch("R deve ter $q colunas (r×q), recebido $(size(R))"))
+    size(V, 2) == m ||
+        throw(DimensionMismatch("V deve ter $m colunas (v×m), recebido $(size(V))"))
+
+    result = _solve_pinvariant_segref_delay_sim2(
+        system.A, system.B, system.E, S, R, V, system.d;
+        lambda=lambda, time=time, lf=lf,
+    )
+
+    status = result["status"]
+    status == MathOptInterface.LOCALLY_SOLVED ||
+        error("Não foi possível encontrar um poliedro com essas restrições (status: $status)")
+
+    F = result["F"]
+    G = result["G"]
+    system.G = G
+
+    return InvariantPolyhedron(F, ones(lf), lambda, system)
 end

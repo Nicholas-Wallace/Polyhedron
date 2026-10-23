@@ -428,6 +428,12 @@ begin
 end
   ╠═╡ =#
 
+# ╔═╡ 4ac93b77-7567-430f-82fe-d2e2ed75a893
+# ╠═╡ disabled = true
+#=╠═╡
+init_cond_F, init_cond_w = admissable_initCond(A_exp, B_exp*G, F, d, w; fixed_d=true)
+  ╠═╡ =#
+
 # ╔═╡ d7d2ec55-8de5-40f5-be93-18e1ffc1ef31
 #=╠═╡
 using Pkg
@@ -437,12 +443,6 @@ using Pkg
 # ╠═╡ disabled = true
 #=╠═╡
 using Pkg
-  ╠═╡ =#
-
-# ╔═╡ 4ac93b77-7567-430f-82fe-d2e2ed75a893
-# ╠═╡ disabled = true
-#=╠═╡
-init_cond_F, init_cond_w = admissable_initCond(A_exp, B_exp*G, F, d, w; fixed_d=true)
   ╠═╡ =#
 
 # ╔═╡ Cell order:

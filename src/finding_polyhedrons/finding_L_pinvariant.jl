@@ -178,13 +178,8 @@ Retorna um dicionario com:
 o poliedro encontrado, a matriz de ganho
 lambda e todas as matrizes utilizadas no problema de otimização 
 """
-function finding_L_pinvariant(system::SystemDelayed, U::Matrix, X::Matrix; time=10, lf=10) 
+function finding_L_pinvariant(system::SystemDelayed, U::Matrix, X::Matrix; time=10, lf=14, pond=0.2, t=8) 
 
-    A = system.A
-    B = system.Ad
-    C = system.C
-    d = system.d
-   
     model = Model() do
         return NEOSServer.Optimizer(; email = "wallace.lopes.162@ufrn.edu.br", solver = "Knitro")
     end
@@ -195,12 +190,18 @@ function finding_L_pinvariant(system::SystemDelayed, U::Matrix, X::Matrix; time=
     end
 
     #Parâmetros
-    n = size(A, 1); #Ordem do sistema (Linhas de A)
-    m = size(B, 2); #Número de Entradas (Colunas de B)
+    n = size(system.A, 1); #Ordem do sistema (Linhas de A)
+    m = size(system.Ad, 2); #Número de Entradas (Colunas de Ad)
+    u = size(U, 1) # Número de linhas da Restrição de Entrada
+    x = size(X, 1) # Número de linhas da Restrição de Estado 
+
+   vet = vet_array = Polyhedron.vet_eq_spc(t)
+   xt = ones(t)
+
 
     ones_f = ones(lf)
-    ones_r = ones(r)
-    ones_s = ones(s)
+    ones_x = ones(x)
+    ones_u = ones(u)
 
 
     @variable(model, K[1:n, 1:n]) #Variavel auxiliar trans model
@@ -210,29 +211,37 @@ function finding_L_pinvariant(system::SystemDelayed, U::Matrix, X::Matrix; time=
     @variable(model, 0 <= L[1:lf,1:lf] <= 300) #Farkas para A
     @variable(model, 0 <= M[1:lf,1:lf] <= 300) #Farkas para A
     @variable(model, 0 <= N[1:lf,1:lf] <= 300) #Farkas para A
-    @variable(model, 0 <= P[1:lf,1:r] <= 300) #Farkas para E
-    @variable(model, 0 <= T[1:s, 1:lf] <= 300) #Pra fazer a inclusão de L em S
+#    @variable(model, 0 <= P[1:lf,1:r] <= 300) #Farkas para E
+    @variable(model, 0 <= R[1:u,1:lf] <=300) # Farkas V
+    @variable(model, 0 <= T[1:x, 1:lf] <= 300) #Pra fazer a inclusão de L em X
     @variable(model, J[1:n, 1:lf]) #Pseudo inversa
 
-    @variable(model, 0.001 <= igamma <= 1000)
-    @variable(model, 0 <= Z[1:lf, 1:s] <= 300)
+    @variable(model, gamma[1:t] >= 0)
+    @variable(model, 0.001 <= lambda <= 1)
+    @variable(model, 0 <= Z[1:lf, 1:x] <= 300)
 
-    @objective(model, Min, igamma)
+    func_obj = pond*lambda - (1-pond)*sum(gamma)/t
 
-    @constraint(model, H*F == F*(A+K)) 
-    @constraint(model, L*F == F*(B*G - K))
-    @constraint(model, M*F == -F*K*(A-I(n)))
-    @constraint(model, N*F == -F*K*B*G)
-    @constraint(model, P*R == F*E)
-    @constraint(model, T*F == S)
+    @objective(model, Min, func_obj)
+
+    @constraint(model, H*F == F*(system.A+K)) 
+    @constraint(model, L*F == F*(system.Ad*G - K))
+    @constraint(model, M*F == -F*K*(system.A-I(n)))
+    @constraint(model, N*F == -F*K*system.Ad*G)
+    @constraint(model, T*F == X)
+    @constraint(model, R*F == U*G)
     @constraint(model, J*F == I(n))
 
     # Restrições do igamma
-    @constraint(model, Z*S == F)
-    @constraint(model, Z*ones_s .<= ones_f*igamma)
+    for i in range(1, t)
+      @constraint(model, F*gamma[i]*vet[i] .<= ones_f)
+    end
+#    @constraint(model, Z*X == F)
+#    @constraint(model, Z*ones_x .<= ones_f*igamma)
     
-    @constraint(model, (H + L + d*(M + N))*ones_f + P*ones_r .<= ones_f*lambda)
-    @constraint(model, T*ones_f .<= ones_s)
+    @constraint(model, (H + L + system.d*(M + N))*ones_f  .<= ones_f*lambda)
+    @constraint(model, T*ones_f .<= ones_x)
+    @constraint(model, R*ones_f .<= ones_u)
 
     #0  Auto (Knitro escolhe sozinho).
     #1: Active Set 
@@ -249,80 +258,11 @@ function finding_L_pinvariant(system::SystemDelayed, U::Matrix, X::Matrix; time=
 
     optimize!(model)
 
-    F = value.(F)
-    G = value.(G)
-    K = value.(K)
-    H = value.(H)
-    L = value.(L)
-    M = value.(M)
-    N = value.(N)
-    P = value.(P)
-    T = value.(T)
-    Z = value.(Z)
-    J = value.(J)
+    system.G = value.(G) 
 
-    result = Dict(
-    "F" => F,
-    "G" => G,
-    "K" => K,
-    "H" => H,
-    "L" => L, 
-    "M" => M,
-    "N" => N,
-    "P" => P, 
-    "T" => T,
-    "Z" => Z
-    )
-
-    # Salvar matrizes em arquivo
-    open("results_pinvariant_segref_delay.txt", "w") do io
-        println(io, "=== Resultados da otimização ===")
-        println(io, "Status: $(termination_status(model))\n")
-        
-        println(io, "=== Matriz F (Poliedro) ===")
-        writedlm(io, F)
-        println(io, "")
-        
-        println(io, "=== Matriz G (Ganho do controlador) ===")
-        writedlm(io, G)
-        println(io, "")
-        
-        println(io, "=== Matriz K (Variável auxiliar) ===")
-        writedlm(io, K)
-        println(io, "")
-        
-        println(io, "=== Matriz H (Farkas) ===")
-        writedlm(io, H)
-        println(io, "")
-        
-        println(io, "=== Matriz L (Farkas) ===")
-        writedlm(io, L)
-        println(io, "")
-        
-        println(io, "=== Matriz M (Farkas) ===")
-        writedlm(io, M)
-        println(io, "")
-        
-        println(io, "=== Matriz N (Farkas) ===")
-        writedlm(io, N)
-        println(io, "")
-        
-        println(io, "=== Matriz P (Farkas para E) ===")
-        writedlm(io, P)
-        println(io, "")
-        
-        println(io, "=== Matriz T (Inclusão em S) ===")
-        writedlm(io, T)
-        println(io, "")
-        
-        println(io, "=== Matriz Z ===")
-        writedlm(io, Z)
-        println(io, "")
-    end
-
-    print(termination_status(model))
-
-    return result
+    ip = InvariantPolyhedron(value.(F), ones_f, value.(lambda), system)
+    
+    return ip 
 end
 
 """
@@ -330,7 +270,7 @@ end
 
 Versão sem restrição de entrada: equivale a chamar com `U = nothing`.
 """
-function finding_L_pinvariant(system::SystemDelayed, X::Matrix; time=10, lf=10)
+function finding_L_pinvariant(system::SystemDelayed, X::Matrix; time=10, lf=14)
     return finding_L_pinvariant(system, nothing, X; time=time, lf=lf)
 end
 

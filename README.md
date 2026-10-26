@@ -6,14 +6,6 @@ A Julia library for the computation and analysis of invariant sets in discrete-t
 
 The library is built around the Julia ecosystem, integrating optimization modeling and polyhedral manipulation tools.
 
-## Features
-
-- **System representation:** Define discrete-time linear systems using state-space matrices.
-- **Invariant set verification:** Check whether a polyhedral set is positively invariant for a given system.
-- **Invariant polyhedron computation:** Search for invariant sets satisfying specified constraints.
-- **State and input constraints:** Represent system constraints using polyhedral inequalities.
-- **Feedback configurations:** Work with different feedback structures, including state-feedback and output-feedback configurations.
-- **Delayed systems:** Support additional computations for systems with delays in the control input.
 
 ## Installation
 
@@ -53,38 +45,7 @@ dev path/to/Polyhedron
 
 The following examples illustrate how to define dynamical systems and use the library to investigate invariant polyhedra.
 
-## Example 1 — Linear System with State Feedback
-
-Consider the discrete-time linear system
-
-\[
-x(k+1) = Ax(k) + Bu(k),
-\]
-
-\[
-y(k) = Cx(k),
-\]
-
-with the following state-space matrices:
-
-\[
-A =
-\begin{bmatrix}
-1 & 1 \\
-0 & 1
-\end{bmatrix},
-\qquad
-B =
-\begin{bmatrix}
-2 \\
-1
-\end{bmatrix},
-\qquad
-C =
-\begin{bmatrix}
-1 & 0
-\end{bmatrix}.
-\]
+## Example 1.1 — Linear System with State Feedback
 
 This example demonstrates how to define a system using its state-space matrices, specify state and input constraints, and investigate the invariance of a polyhedral set.
 
@@ -136,66 +97,25 @@ ip = is_pinvariant(sys, U, X)
 4. Run the invariant set verification or computation procedure.
 5. Inspect the resulting polyhedron and optimization status.
 
+## Example 1.2 — Finding a Invariant Polyhedron
+
+Use the same system, but with SOF, right now
+
+```Julia
+set_feedback!(sys, SOF)
+```
+
+We can verify that Positive Invariance cannot be acchived by the set defined by $X$, but we can find a polyhedron inside $X$ that can be Positive Invariant
+
+```Julia
+ip = finding_L_pinvariant(sys, U, X)
+```
+
 ---
 
 ## Example 2 — Discrete-Time System with State and Input Constraints
 
-Consider the following discrete-time system:
-
-\[
-x(k+1) = Ax(k) + Bu(k),
-\]
-
-\[
-y(k) = Cx(k),
-\]
-
-where
-
-\[
-A =
-\begin{bmatrix}
-0.9666 & 0 \\
-0.0328 & 0.9666
-\end{bmatrix},
-\qquad
-B =
-\begin{bmatrix}
-0.1980 \\
-0.0033
-\end{bmatrix},
-\]
-
-and
-
-\[
-C =
-\begin{bmatrix}
-0 & 1
-\end{bmatrix}.
-\]
-
-The state and input constraints are defined by the following matrices:
-
-\[
-U =
-\begin{bmatrix}
-1/4 \\
--1/4
-\end{bmatrix},
-\]
-
-\[
-X =
-\begin{bmatrix}
-1/15 & 0 \\
--1/15 & 0 \\
-0 & 1/15 \\
-0 & -1/15
-\end{bmatrix}.
-\]
-
-This example illustrates how to define a system with explicit state and input constraints and use the library to investigate its invariant sets.
+Another example
 
 ### Julia implementation
 

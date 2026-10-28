@@ -19,18 +19,42 @@ o ganho encontrado (escrito em `system.G`) e o valor de lambda.
 Com o return_model = true, a função retorna o JuMP.Model resultante, que pode ser utilizado para testar as restrições com as variáveis auxiliares criadas 
 """
 
-function finding_L_pinvariant(system::SLIT, U::Union{Matrix,Nothing}, X::Matrix; ll=6, t=8, pond=0.02, return_model::Bool=false)
+function pinvariant_poly(system::SLIT, U::Union{Matrix,Nothing}, X::Matrix; lf=6, pond=0.02, return_model::Bool=false)
   model = Model() do
     return NEOSServer.Optimizer(; email="wallace.lopes.162@ufrn.edu.br", solver="Knitro")
   end
 
-  # TODO: tratar U === nothing (pular M, phi e as restrições u_included0/u_included1)
-  if U === nothing
-    error("finding_L_pinvariant: caso sem U ainda não implementado (TODO)")
-  end
 
   #Parâmetros
   n, m, p = checkdims(system.A, system.B, system.C)
+
+  # Problem constraints
+  invariance_constraints!(model, system)  
+  state_constraints!(model, system, X)
+  if U != nothing input_constraints!(model, system, U) 
+
+  enl!(model, system) # To eq_spaced I will need "t" and to X_like_aux_poly I need X
+
+  optimize!(model)
+  @show termination_status(model)
+
+  if termination_status(model) != MathOptInterface.LOCALLY_SOLVED
+    error("Não foi possivel encontrar um poliedro com essas restrições")
+  end
+
+  system.G = value.(G) # Update gains
+  ip = InvariantPolyhedron(F, ones_f, value.(lambda), system)
+
+  return return_model ? (poly=ip, model_solved=model) : ip
+
+
+
+
+
+
+
+
+
 
   lx = size(X, 1); #Número de linhas de X
   lu = size(U, 1); #Número de linhas de U
@@ -50,6 +74,7 @@ function finding_L_pinvariant(system::SLIT, U::Union{Matrix,Nothing}, X::Matrix;
   @variable(model, 0 <= M[1:lu, 1:ll] <= 100)
   @variable(model, J[1:n, 1:ll])
   @variable(model, gamma[1:t] >= 0)
+  @variable(model, 0.001 <= lambda <= 1)
 
 
   #Objetivo
@@ -72,6 +97,7 @@ function finding_L_pinvariant(system::SLIT, U::Union{Matrix,Nothing}, X::Matrix;
     end
 
     optimize!(model)
+    @show termination_status(model)
 
     if termination_status(model) != MathOptInterface.LOCALLY_SOLVED
       error("Não foi possivel encontrar um poliedro com essas restrições")
@@ -79,7 +105,7 @@ function finding_L_pinvariant(system::SLIT, U::Union{Matrix,Nothing}, X::Matrix;
 
     system.G = value.(K)
 
-    ip = InvariantPolyhedron(L, xl, lambda, system)
+    ip = InvariantPolyhedron(L, xl, value.(lambda), system)
 
     return return_model ? (poly=ip, model_solved=model) : ip
 
@@ -105,7 +131,7 @@ function finding_L_pinvariant(system::SLIT, U::Union{Matrix,Nothing}, X::Matrix;
 
     system.G = value.(F)
 
-    ip = InvariantPolyhedron(L, xl, lambda, system)
+    ip = InvariantPolyhedron(L, xl, value.(lambda), system)
 
     return return_model ? (poly=ip, model_solved=model) : ip
   end
@@ -303,11 +329,11 @@ function finding_L_pinvariant(system::LTIDisturbanceDelayedInput, S::AbstractMat
     return InvariantPolyhedron(F, ones(lf), lambda, system)
 end
 
-function _add_inv_constraints!(model::JuMP.Model, system.System)
+function _add_inv_constraints!(model::JuMP.Model, system::System)
   return _add_inv_constraints!(model, system)
-return
+end
 
-function _add_inv_constraints!(model::JuMP.Model, system.SLIT, lf)
+function _add_inv_constraints!(model::JuMP.Model, system::SLIT, lf)
  
   @variable(model, 0 <= H[1:lf, 1:lf] <= 100)
   system.feedback == SOF ? @variable(model, G[1:m, 1:p]) : @variable(model, G[1:m, 1:n])
@@ -322,5 +348,6 @@ function _add_inv_constraints!(model::JuMP.Model, system.SLIT, lf)
     
     @constraint(model, contractiave_pi0, H*L == L*(system.A + system.B*G*system.C))
     @constraint(model, contractiave_pi1, H*ones_f <= ones_f*lambda)
+  end
 
 end

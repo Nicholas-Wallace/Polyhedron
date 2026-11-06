@@ -50,6 +50,8 @@ function finding_L_pinvariant(system::SLIT, U::Union{Matrix,Nothing}, X::Matrix;
   @variable(model, 0 <= M[1:lu, 1:ll] <= 100)
   @variable(model, J[1:n, 1:ll])
   @variable(model, gamma[1:t] >= 0)
+  @variable(model, 0.001 <= lambda <= 1)
+
 
 
   #Objetivo
@@ -303,11 +305,11 @@ function finding_L_pinvariant(system::LTIDisturbanceDelayedInput, S::AbstractMat
     return InvariantPolyhedron(F, ones(lf), lambda, system)
 end
 
-function _add_inv_constraints!(model::JuMP.Model, system.System)
+function _add_inv_constraints!(model::JuMP.Model, system::System)
   return _add_inv_constraints!(model, system)
-return
+end
 
-function _add_inv_constraints!(model::JuMP.Model, system.SLIT, lf)
+function _add_inv_constraints!(model::JuMP.Model, system::SLIT, lf)
  
   @variable(model, 0 <= H[1:lf, 1:lf] <= 100)
   system.feedback == SOF ? @variable(model, G[1:m, 1:p]) : @variable(model, G[1:m, 1:n])
@@ -322,5 +324,6 @@ function _add_inv_constraints!(model::JuMP.Model, system.SLIT, lf)
     
     @constraint(model, contractiave_pi0, H*L == L*(system.A + system.B*G*system.C))
     @constraint(model, contractiave_pi1, H*ones_f <= ones_f*lambda)
+  end
 
 end

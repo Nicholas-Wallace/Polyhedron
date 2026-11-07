@@ -81,7 +81,7 @@ function finding_L_pinvariant(system::SLIT, U::Union{Matrix,Nothing}, X::Matrix;
 
     system.G = value.(K)
 
-    ip = InvariantPolyhedron(L, xl, lambda, system)
+    ip = InvariantPolyhedron(value.(L), xl, value.(lambda), system)
 
     return return_model ? (poly=ip, model_solved=model) : ip
 

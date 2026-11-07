@@ -47,15 +47,6 @@ function pinvariant_poly(system::SLIT, U::Union{Matrix,Nothing}, X::Matrix; lf=6
 
   return return_model ? (poly=ip, model_solved=model) : ip
 
-
-
-
-
-
-
-
-
-
   lx = size(X, 1); #Número de linhas de X
   lu = size(U, 1); #Número de linhas de U
 
@@ -75,7 +66,6 @@ function pinvariant_poly(system::SLIT, U::Union{Matrix,Nothing}, X::Matrix; lf=6
   @variable(model, J[1:n, 1:ll])
   @variable(model, gamma[1:t] >= 0)
   @variable(model, 0.001 <= lambda <= 1)
-
 
   #Objetivo
   func_obj = pond*lambda - (1-pond)*sum(gamma)/t

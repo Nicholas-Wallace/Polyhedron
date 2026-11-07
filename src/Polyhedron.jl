@@ -1,6 +1,18 @@
 module Polyhedron
 
-using LinearAlgebra, DelimitedFiles, JuMP, HiGHS, NEOSServer, Polyhedra, CDDLib, Base.Iterators, Plots, MathOptInterface
+using Reexport
+
+@reexport using LinearAlgebra
+@reexport using DelimitedFiles
+@reexport using JuMP
+@reexport using HiGHS
+@reexport using NEOSServer
+
+@reexport using Polyhedra
+@reexport using CDDLib
+using Base.Iterators
+@reexport using Plots
+@reexport using MathOptInterface
 
 include("types/Vertices.jl")
 include("types/System.jl")

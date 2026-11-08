@@ -1,6 +1,6 @@
 
 """
-    is_pinvariant(system::SLIT, U, X) -> InvariantPolyhedron
+    is_pinvariant(system::SLIT, X; U=nothing, return_model=false) -> InvariantPolyhedron
 
 Verifica se o poliedro X é p-invariante w.r.t
 
@@ -8,105 +8,54 @@ Verifica se o poliedro X é p-invariante w.r.t
     y[k+1] = system.C*x[k]
 
 O tipo de realimentação é lido de `system.feedback`:
-  SOF -> u[k] = K*y[k] = K*system.C*x[k]
-  SSF -> u[k] = F*x[k]
+  SOF -> u[k] = G*y[k] = G*system.C*x[k]
+  SSF -> u[k] = G*x[k]
   OL  -> não suportado (não há ganho a otimizar)
+
+As restrições são adicionadas pelas funções auxiliares
+`invariance_constraints!` e `input_constraints!` (ambas em modo `find=false`).
+Se `U` for `nothing`, as restrições de entrada são omitidas.
 
 Após a solução do Knitro o ganho encontrado é escrito em `system.G`.
 Retorna um `InvariantPolyhedron` com o valor de lambda e as representações do
 poliedro.
 
-Com `return_model=true` retorna um JuMP.Model resultante do problema de otimização
+Com `return_model=true` o modelo JuMP é retornado antes da otimização.
 
 X é o poliedro a ser verificado
-U é a restrição na entrada
+U é a restrição na entrada (opcional)
 """
-function is_pinvariant(system::SLIT, U::Matrix{Float64}, X::Matrix{Float64}; return_model::Bool=false)
+function is_pinvariant(system::SLIT, X::Matrix;
+                       U::Union{Matrix,Nothing}=nothing,
+                       return_model::Bool=false)
 
   model = Model() do
     return NEOSServer.Optimizer(; email="wallace.lopes.162@ufrn.edu.br", solver="Knitro")
   end
 
-  #Parâmetros
-  n, m, p = checkdims(system.A, system.B, system.C)
+  system.feedback == OL && error("realimentação OL não possui ganho a otimizar")
 
-  lx = size(X, 1); #Número de linhas de X
-  lu = size(U, 1); #Número de linhas de U
+  @variable(model, 0 <= lambda <= 1)
 
-  xi = ones(lx)
-  phi = ones(lu);
+  invariance_constraints!(model, system; find=false, X=X)
 
-
-  if system.feedback == SOF # realimentação de saida 
-    @variable(model, 0 <= H[1:lx, 1:lx] <= 100)
-    @variable(model, K[1:m, 1:p])
-    @variable(model, 0 <= M[1:lu, 1:lx] <= 100)
-    @variable(model, 0 <= lambda <= 1)
-
-    @constraint(model, contractiave_pi0, H*X == X*(system.A + system.B*K*system.C))
-    @constraint(model, u_included0, M*X == U*K*system.C)
-    @constraint(model, contractiave_pi1, H*xi <= xi*lambda)
-    @constraint(model, u_included1, M*xi <= phi)
-
-    @objective(model, Min, lambda)
-
-    optimize!(model)
-
-    @show termination_status(model)
-    if termination_status(model) != MathOptInterface.LOCALLY_SOLVED
-      error("Poliedro não é invariante")
-    end
-
-
-    H = value.(H)
-    K = value.(K)
-    M = value.(M)
-    lambda = value.(lambda)
-
-    system.G = K
-
-    ip = InvariantPolyhedron(X, xi, lambda, system)
-   
-    return return_model ? (poly=ip, model=model) : ip
-
-  elseif system.feedback == SSF # realimentação de estado
-
-    @variable(model, 0 <= H[1:lx, 1:lx] <= 100)
-    @variable(model, F[1:m, 1:n])
-    @variable(model, 0 <= M[1:lu, 1:lx] <= 100)
-    @variable(model, 0 <= lambda <= 1)
-
-
-    @constraint(model, contractiave_pi0, H*X == X*(system.A + (system.B)*F))
-    @constraint(model, u_included0, M*X == U*F)
-    @constraint(model, contractiave_pi1, H*xi <= xi*lambda)
-    @constraint(model, u_included1, M*xi <= phi)
-
-    @objective(model, Min, lambda)
-    optimize!(model)
-
-
-    @show termination_status(model)
-
-    if termination_status(model) != MathOptInterface.LOCALLY_SOLVED
-      error("polyhedro não é invariante")
-    end
-
-
-    H = value.(H)
-    F = value.(F)
-    M = value.(M)
-    lambda = value.(lambda)
-
-    system.G = value.(F)
-
-    ip = InvariantPolyhedron(X, xi, lambda, system)
-
-    return return_model ? (poly=ip, model=model) : ip
-
-  else
-    error("realimentação OL não possui ganho a otimizar")
+  if U !== nothing
+    input_constraints!(model, system, U, size(system.A, 1); find=false, X=X)
   end
+
+  @objective(model, Min, lambda)
+
+  return_model && return model
+
+  optimize!(model)
+  @show termination_status(model)
+
+  termination_status(model) == MathOptInterface.LOCALLY_SOLVED ||
+    error("Poliedro não é invariante")
+
+  system.G = value.(model[:G])
+
+  return InvariantPolyhedron(X, ones(size(X, 1)), value(lambda), system)
 end
 
 

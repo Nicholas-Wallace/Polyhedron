@@ -25,22 +25,27 @@ include("trajectories/trajectory.jl")
 include("utils/poly_projection.jl")
 
 
-include("methods/is_pinvariant.jl")
+include("invariance/is_pinvariant/is_pinvariant.jl")
 
 include("plots/plot_poly.jl")
 include("plots/plot_trajectory.jl")
 
-include("finding_polyhedrons/finding_L_pinvariant.jl")
-include("finding_polyhedrons/finding_L_pinvarint_segref_delay_sat.jl")
-include("finding_polyhedrons/finding_L_pinvariant_segref.jl")
-include("finding_polyhedrons/finding_L_pinvariant_segref_delay.jl")
+include("invariance/state_constraints.jl")
+include("invariance/input_constraints.jl")
+include("invariance/invariance_constraints.jl")
+
+include("invariance/finding_pinvariant/eq_spaced_vet_enl.jl")
+include("invariance/finding_pinvariant/state_constraint_enl.jl")
+include("invariance/finding_pinvariant/finding_L_pinvariant.jl")
 include("trajectories/trajectory_segref.jl")
 
 include("pipelines/pipe_trajectory.jl")
 
 include("utils/enl_simples.jl")
 
-
+export pinvariant_poly
+export invariance_constraints!, state_constraints!, input_constraints!
+export eq_spaced_vet_enl!, state_constraint_enl!
 export finding_L_pinvariant, finding_L_pinvariant_segref, finding_L_pinvariant_segref_delay, step1_saturation, step2_saturation, is_pinvariant_seg_ref
 export step1_saturation_segref, step2_saturation_segref, step1_saturation_segref_alt, step2_saturation_segref_alt
 export is_pinvariant

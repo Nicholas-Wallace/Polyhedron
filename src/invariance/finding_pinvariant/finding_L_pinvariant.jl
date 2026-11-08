@@ -19,113 +19,58 @@ o ganho encontrado (escrito em `system.G`) e o valor de lambda.
 Com o return_model = true, a função retorna o JuMP.Model resultante, que pode ser utilizado para testar as restrições com as variáveis auxiliares criadas 
 """
 
-function pinvariant_poly(system::SLIT, U::Union{Matrix,Nothing}, X::Matrix; lf=6, pond=0.02, return_model::Bool=false)
+function pinvariant_poly(system::SLIT, X::Matrix; kwargs...)
+
+  # coletando kwargs
+  U            = get(kwargs, :U, nothing)
+  lf           = get(kwargs, :lf, 6)
+  t            = get(kwargs, :t, 8)
+  pond         = get(kwargs, :pond, 0.02)
+  return_model = get(kwargs, :return_model, false)
+
+  # creating model
   model = Model() do
     return NEOSServer.Optimizer(; email="wallace.lopes.162@ufrn.edu.br", solver="Knitro")
   end
 
-
-  #Parâmetros
-  n, m, p = checkdims(system.A, system.B, system.C)
+  # Create F Polyhedron and Lambda
+  n = size(system.A, 1)
+  @variable(model, -500 <= F[1:lf, 1:n] <= 500)
+  @variable(model, 0.001 <= lambda <= 1)
 
   # Problem constraints
-  invariance_constraints!(model, system)  
+  invariance_constraints!(model, system; find=true, lf=lf, X=X)
   state_constraints!(model, system, X)
-  if U != nothing input_constraints!(model, system, U) 
 
-  enl!(model, system) # To eq_spaced I will need "t" and to X_like_aux_poly I need X
+  if U !== nothing
+    input_constraints!(model, system, U, size(system.A, 1); find=true)
+  end
+
+  # por padrao enl é eq_spaced_vet_enl!
+  enl = get(kwargs, :enl, eq_spaced_vet_enl!)
+  # TODO: test if enl is a valid function
+  # its important to let the user create you own function
+  enl(model; X=X, kwargs...)
 
   optimize!(model)
   @show termination_status(model)
 
   if termination_status(model) != MathOptInterface.LOCALLY_SOLVED
-    error("Não foi possivel encontrar um poliedro com essas restrições")
+    if return_model
+      # return the model even if the problem was not solved
+      return model
+    else
+      error("Não foi possivel encontrar um poliedro com essas restrições")
+    end
   end
 
   system.G = value.(G) # Update gains
   ip = InvariantPolyhedron(F, ones_f, value.(lambda), system)
 
-  return return_model ? (poly=ip, model_solved=model) : ip
-
-  lx = size(X, 1); #Número de linhas de X
-  lu = size(U, 1); #Número de linhas de U
-
-  xi = ones(lx)
-  phi = ones(lu);
-  xl = ones(ll)
-
-  vet = vet_array = Polyhedron.vet_eq_spc(t)
-  xt = ones(t)
-
-  #Variáveis de decisão
-  @variable(model, 0 <= H[1:ll, 1:ll] <= 100)
-  @variable(model, 0 <= T[1:lx, 1:ll] <= 100)
-  @variable(model, L[1:ll, 1:n])
-  system.feedback == SOF ? @variable(model, K[1:m, 1:p]) : @variable(model, F[1:m, 1:n])
-  @variable(model, 0 <= M[1:lu, 1:ll] <= 100)
-  @variable(model, J[1:n, 1:ll])
-  @variable(model, gamma[1:t] >= 0)
-  @variable(model, 0.001 <= lambda <= 1)
-
-  #Objetivo
-  func_obj = pond*lambda - (1-pond)*sum(gamma)/t
-
-  @objective(model, Min, func_obj)
-
-  # tentando encontrar um L, caso bilinear
-  if system.feedback == SOF # realimentação de saida 
-    @constraint(model, contractiave_pi0, H*L == L*(system.A + system.B*K*system.C))
-    @constraint(model, u_included0, M*L == U*K*system.C)
-
-    @constraint(model, x_included0, T*L == X)
-    @constraint(model, x_included1, T*xl <= xi)
-    @constraint(model, u_included1, M*xl <= phi)
-    @constraint(model, rank_l, J*L == I(n))
-
-    for i in range(1, t)
-      @constraint(model, L*gamma[i]*vet[i] .<= xl)
-    end
-
-    optimize!(model)
-    @show termination_status(model)
-
-    if termination_status(model) != MathOptInterface.LOCALLY_SOLVED
-      error("Não foi possivel encontrar um poliedro com essas restrições")
-    end
-
-    system.G = value.(K)
-
-    ip = InvariantPolyhedron(L, xl, value.(lambda), system)
-
-    return return_model ? (poly=ip, model_solved=model) : ip
-
-  else # realimentação de estado
-    @constraint(model, contractiave_pi0, H*L == L*(system.A + system.B*F))
-    @constraint(model, u_included0, M*L == U*F)
-
-    @constraint(model, contractiave_pi1, H*xl <= xl*lambda)
-    @constraint(model, x_included0, T*L == X)
-    @constraint(model, x_included1, T*xl <= xi)
-    @constraint(model, u_included1, M*xl <= phi)
-    @constraint(model, rank_l, J*L == I(n))
-
-    for i in range(1, t)
-      @constraint(model, L*gamma[i]*vet[i] .<= xl)
-    end
-
-    optimize!(model)
-
-    if termination_status(model) != MathOptInterface.LOCALLY_SOLVED
-      error("Não foi possivel encontrar um poliedro com essas restrições")
-    end
-
-    system.G = value.(F)
-
-    ip = InvariantPolyhedron(L, xl, value.(lambda), system)
-
-    return return_model ? (poly=ip, model_solved=model) : ip
-  end
+  return return_model ? model : ip
 end
+
+
 
 """
     finding_L_pinvariant(system::SLIT, X::Matrix; ll = 6, t = 8, pond = 0.02, return_model = false) -> InvariantPolyhedron

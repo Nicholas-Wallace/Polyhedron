@@ -72,35 +72,6 @@ end
 
 
 
-"""
-    finding_L_pinvariant(system::SLIT, X::Matrix; ll = 6, t = 8, pond = 0.02, return_model = false) -> InvariantPolyhedron
-
-Versão sem restrição de entrada: equivale a chamar com `U = nothing`.
-"""
-function finding_L_pinvariant(system::SLIT, X::Matrix; ll=6, t=8, pond=0.02, return_model::Bool=false)
-  return finding_L_pinvariant(system, nothing, X; ll=ll, t=t, pond=pond, return_model=return_model)
-end
-
-""" 
-  finding_L_pinvariant(system::SystemDelayed, U::Matrix, X::Matrix; lambda=0.99, time=10, lf=10)  -> Dict{String, Matrix{Float}}
-
-`U` pode ser uma `Matrix` ou `nothing` (nesse último caso, também se pode chamar
-`finding_L_pinvariant(system, X; ...)`).
-
-Procuramos um poliedro de f linhas que seja invariante w.r.t
-
-    x[k+1] = Ax[k] + Adu[k-d]
-    y[k+1] = Cx[k]
-
-Respeitando as restrições de estado e saída respectivamente:
-    
-    Xx <= ones(size(X, 1))
-    Uu <= ones(size(X, 1))
-
-Retorna um dicionario com:
-o poliedro encontrado, a matriz de ganho
-lambda e todas as matrizes utilizadas no problema de otimização 
-"""
 function finding_L_pinvariant(system::SystemDelayed, U::Matrix, X::Matrix; time=10, lf=14, pond=0.2, t=8, enl=true) 
 
     

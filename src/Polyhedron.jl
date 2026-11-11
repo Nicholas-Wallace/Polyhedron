@@ -26,12 +26,10 @@ include("types/InvariantPolyhedron.jl")
 include("utils/cond_iniciais_adm.jl")
 include("utils/vet_eq_spc.jl")
 include("utils/poly_projection.jl")
-include("utils/enl_simples.jl")
 # include("utils/outros.jl")  # disabled: undefined `Poly`, leaks globals F/G
 
 # --- trajectories -----------------------------------------------------------
 include("trajectories/trajectory.jl")
-include("trajectories/trajectory_segref.jl")
 
 # --- invariance -------------------------------------------------------------
 include("invariance/state_constraints.jl")
@@ -53,13 +51,12 @@ export System, Feedback, SOF, SSF, OL
 export SLIT, SystemDelayed, LTIDisturbance, LTIDisturbanceDelayedInput
 export set_feedback!, checkdims
 export InvariantPolyhedron
-export Vertices, get_extVert_tuple, get_extreme_vertices
+export get_extVert_tuple, get_extreme_vertices
 export poly_projection
-export cond_iniciais_adm, mat_cond_iniciais_adm, elimred,
-       extended_F, extended_A, extended_A_Vector, allPossibleComb,
+export elimred, extended_F, extended_A, extended_A_Vector, allPossibleComb,
        admissable_initCond, calcular_v
 export vet_eq_spc
-export trajectory, trajectory_segref, trajectory_segref_delay
+export trajectory, trajectory_segref
 export is_pinvariant
 export invariance_constraints!, state_constraints!, input_constraints!
 export pinvariant_poly
@@ -67,6 +64,5 @@ export eq_spaced_vet_enl!, state_constraint_enl!
 export plot_poly, get_shape, plot_vertices, plot_trajectories,
        plot_expanded_state_trajectory, plot_v_state_trajectory, plot_along_k
 export plot_trajectory, plot_trajectory!
-export enl_simples
 
 end

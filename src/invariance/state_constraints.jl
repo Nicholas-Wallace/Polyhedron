@@ -19,7 +19,7 @@ function state_constraints!(model, system::System, X::Matrix)
   ones_x = ones(lx)
   ones_f = ones(lf)
 
-  @variable(model, 0 <= T[1:lx, 1:lf] <= 100)
+  @variable(model, 0 <= T[1:lx, 1:lf])
 
   @constraint(model, x_included0, T * model[:F] == X)
   @constraint(model, x_included1, T * ones_f <= ones_x)

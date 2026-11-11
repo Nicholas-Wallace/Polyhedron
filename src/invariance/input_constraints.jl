@@ -57,7 +57,7 @@ function input_constraints!(model, system::System, U::Matrix, lx::Int; find::Boo
 
   # é preciso ainda que Rank(F) == lx
   if find 
-    @variable(model, 0 <= J[1:lx, 1:lf] <= 100)
+    @variable(model, J[1:lx, 1:lf] <= 100)
     @constraint(model, pseudo_inv, J * poly == I(lx))
   end
 

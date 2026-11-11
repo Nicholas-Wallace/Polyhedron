@@ -9,11 +9,6 @@ Add constrainsts to ensure invariance for a polyhedron.
 
 We use Farka's Lemma to write constraints that need to be satisfacted.
 """
-
-function invariance_constraints!(model, system::System; kwargs...)
-  return invariance_constraints!(model, system; kwargs=kwargs)
-end
-
 function invariance_constraints!(model, system::SLIT; find::Bool=false, lf=6, X::Matrix)
 
   #TODO: add verification (find == true && X != nothing)
@@ -69,8 +64,9 @@ function invariance_constraints!(model, system::SLIT; find::Bool=false, lf=6, X:
 end
 
 
-function invariance_constraints!(model, system::SystemDelayed; lf=6, X::Matrix)
-  
+function invariance_constraints!(model, system::SystemDelayed; X::Matrix, find=true)
+  #TODO: add "find" flag handle
+
   # Restrições baseadas nas condições de invariancia delay-dependent
 
   lf = size(model[:F], 1)
@@ -81,13 +77,13 @@ function invariance_constraints!(model, system::SystemDelayed; lf=6, X::Matrix)
   # Declaring problem variable
 
   # aux variable to transformed model
-  @variable(model, 0 <= K[1:n, 1:n] <= 100) 
+  @variable(model, K[1:n, 1:n]) 
   
   # Farka's aux matrix
-  @variable(model, 0 <= H[1:lf, 1:lf] <= 100)
-  @variable(model, 0 <= L[1:lf, 1:lf] <= 100)
-  @variable(model, 0 <= M[1:lf, 1:lf] <= 100)
-  @variable(model, 0 <= N[1:lf, 1:lf] <= 100)
+  @variable(model, 0 <= H[1:lf, 1:lf])
+  @variable(model, 0 <= L[1:lf, 1:lf])
+  @variable(model, 0 <= M[1:lf, 1:lf])
+  @variable(model, 0 <= N[1:lf, 1:lf])
 
   # The Gain matrix dimension depends on the feedback
   if system.feedback == SOF
@@ -99,9 +95,9 @@ function invariance_constraints!(model, system::SystemDelayed; lf=6, X::Matrix)
   end
 
 
-  @constraint(model, contractiave_pi_H, H*model[:F] == model[:F]*(A + K))
+  @constraint(model, contractiave_pi_H, H*model[:F] == model[:F]*(system.A + K))
   @constraint(model, contractiave_pi_L, L*model[:F] == model[:F]*(U - K))
-  @constraint(model, contractiave_pi_M, M*model[:F] == model[:F]*K*(A - I(n)))
+  @constraint(model, contractiave_pi_M, M*model[:F] == model[:F]*K*(system.A - I(n)))
   @constraint(model, contractiave_pi_N, N*model[:F] == model[:F]*K*U)
   
   @constraint(model, contractiave_pi, (H + L + system.d*(M+N))*ones_f <= ones_f*model[:lambda])
@@ -109,13 +105,12 @@ function invariance_constraints!(model, system::SystemDelayed; lf=6, X::Matrix)
   return nothing
 end
 
-function invariance_constraints!(model, system::LTIDisturbanceDelayedInput; lf=6, X::Matrix)
+function invariance_constraints!(model, system::LTIDisturbanceDelayedInput; X::Matrix, D::Matrix)
   
   # Restrições baseadas nas condições de invariancia delay-dependent
 
-  # TODO: lf era passado como kwarg
   lf = size(model[:F], 1)
-  ld = size(system.E, 1)
+  ld = size(D, 1)
   lr = size(system.E, 2) # ou ce
   ones_f = ones(lf)
   ones_d = ones(ld)
@@ -132,8 +127,6 @@ function invariance_constraints!(model, system::LTIDisturbanceDelayedInput; lf=6
   @variable(model, 0 <= L[1:lf, 1:lf] <= 100)
   @variable(model, 0 <= M[1:lf, 1:lf] <= 100)
   @variable(model, 0 <= N[1:lf, 1:lf] <= 100)
-  #TODO: revisar dimensores de D (D deve ser passado nas restrições)
-  @variable(model, 0 <= D[1:ld, 1:lr] <= 100)
   # aux variables to disturbance
   @variable(model, 0 <= P[1:ld, 1:ld] <= 100)
   @variable(model, 0 <= Q[1:ld, 1:ld] <= 100)
@@ -152,8 +145,8 @@ function invariance_constraints!(model, system::LTIDisturbanceDelayedInput; lf=6
   @constraint(model, contractiave_pi_L, L*model[:F] == model[:F]*(U - K))
   @constraint(model, contractiave_pi_M, M*model[:F] == model[:F]*K*(system.A - I(n)))
   @constraint(model, contractiave_pi_N, N*model[:F] == model[:F]*K*U)
-  @constraint(model, contractiave_pi_P, P*model[:D] == model[:D]*system.E)
-  @constraint(model, contractiave_pi_Q, Q*model[:D] == -model[:D]*K*system.E)
+  @constraint(model, contractiave_pi_P, P*D == D*system.E)
+  @constraint(model, contractiave_pi_Q, Q*D == -D*K*system.E)
 
   @constraint(model, contractiave_pi, (H + L + system.d*(M+N))*ones_f + (P+system.d*Q)*ones_d <= ones_f*model[:lambda])
 

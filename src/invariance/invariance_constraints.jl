@@ -1,5 +1,5 @@
 """
-  invariance_constraints!(model, system::System; find::Bool=false, lf=6, X::Matrix)
+  invariance_constraints!(model, system::System, X::Matrix; find::Bool=false)
 
 Add constrainsts to ensure invariance for a polyhedron.
 
@@ -9,9 +9,9 @@ Add constrainsts to ensure invariance for a polyhedron.
 
 We use Farka's Lemma to write constraints that need to be satisfacted.
 """
-function invariance_constraints!(model, system::SLIT; find::Bool=false, X::Matrix)
+function invariance_constraints!(model, system::SLIT, X::Matrix; find::Bool=false)
 
-  #TODO: add verification (find == true && X != nothing)
+  system.feedback == OL && error("realimentação OL não possui ganho a otimizar")
 
   if find
 
@@ -36,15 +36,11 @@ function invariance_constraints!(model, system::SLIT; find::Bool=false, X::Matri
     @constraint(model, contractiave_pi0, H*model[:F] == model[:F]*A_cl)
     @constraint(model, contractiave_pi1, H*ones_f <= ones_f*model[:lambda])
 
-    # é preciso ainda que Rank(F) == lx
-    @variable(model, J[1:lx, 1:lf])
-    @constraint(model, pseudo_inv, J * poly == I(lx))
+    # é preciso ainda que Rank(F) == n
+    @variable(model, J[1:n, 1:lf])
+    @constraint(model, pseudo_inv, J*model[:F] == I(n))
 
   else
-
-    if X == nothing 
-      error("Must pass some `X` to check invariance")
-    end
 
     lx = size(X, 1)
     ones_x = ones(lx)
@@ -72,9 +68,11 @@ function invariance_constraints!(model, system::SLIT; find::Bool=false, X::Matri
 end
 
 
-function invariance_constraints!(model, system::SystemDelayed; find=true, X::Matrix)
+function invariance_constraints!(model, system::SystemDelayed, X::Matrix; find=true)
 
   # Restrições baseadas nas condições de invariancia delay-dependent
+
+  system.feedback == OL && error("realimentação OL não possui ganho a otimizar")
 
   if find
     lf = size(model[:F], 1)
@@ -110,15 +108,11 @@ function invariance_constraints!(model, system::SystemDelayed; find=true, X::Mat
     
     @constraint(model, contractiave_pi, (H + L + system.d*(M+N))*ones_f <= ones_f*model[:lambda])
 
-    # é preciso ainda que Rank(F) == lx
-    @variable(model, J[1:lx, 1:lf])
-    @constraint(model, pseudo_inv, J * poly == I(lx))
+    # é preciso ainda que Rank(F) == n
+    @variable(model, J[1:n, 1:lf])
+    @constraint(model, pseudo_inv, J*model[:F] == I(n))
 
   else
-
-    if X == nothing 
-      error("Must pass some `X` to check invariance")
-    end
 
     n, m, p = checkdims(system.A, system.Ad, system.C)
     lx = size(X, 1)
@@ -157,8 +151,10 @@ function invariance_constraints!(model, system::SystemDelayed; find=true, X::Mat
   return nothing
 end
 
-function invariance_constraints!(model, system::LTIDisturbanceDelayedInput; X::Matrix, D::Matrix)
- 
+function invariance_constraints!(model, system::LTIDisturbanceDelayedInput, X::Matrix, D::Matrix; find::Bool=true)
+
+  system.feedback == OL && error("realimentação OL não possui ganho a otimizar")
+
   if find
     lf = size(model[:F], 1)
     ld = size(D, 1)
@@ -201,22 +197,18 @@ function invariance_constraints!(model, system::LTIDisturbanceDelayedInput; X::M
 
     @constraint(model, contractiave_pi, (H + L + system.d*(M+N))*ones_f + (P+system.d*Q)*ones_d <= ones_f*model[:lambda])
 
-    # é preciso ainda que Rank(F) == lx
-    @variable(model, J[1:lx, 1:lf])
-    @constraint(model, pseudo_inv, J * poly == I(lx))
+    # é preciso ainda que Rank(F) == n
+    @variable(model, J[1:n, 1:lf])
+    @constraint(model, pseudo_inv, J*model[:F] == I(n))
 
   else
-
-    if X == nothing 
-      error("Must pass some `X` to check invariance")
-    end
 
     n, m, p = checkdims(system.A, system.B, system.C)
     lx = size(X, 1)
     ld = size(D, 1)
     lr = size(system.E, 2) # ou ce
     ones_x = ones(lx)
-    ones_d = ones_ld
+    ones_d = ones(ld)
 
     # Declaring problem variable
 

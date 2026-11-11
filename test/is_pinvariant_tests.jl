@@ -1,55 +1,67 @@
 using Test
 using Polyhedron
 
-@testset "is_pinvariant tests" begin
-    
-    @testset "LTI Systems" begin
-    # sistema do book abstract
+@testset "constraints added is_pinvariant SLIT" begin
+
     A = [1 1; 0 1]
     B = [2; 1;;]
     C = [1 0]
     X = [0.8 0; 0 1; -1 0; 0 -1]
     U = [1.2; -1.5;;]
+    system = SLIT(A, B, C, SOF)
 
-    @testset "SSF" begin
-	system = SLIT(A, B, C, SSF)
-    
-        # X é invariante por realimentação de estado
-        ip, matrices = is_pinvariant(system, U, X, verbose=true)
+    model = is_pinvariant(system, X; U=U, return_model=true)
 
-	@test ip.λ < 1
-	@test ip.system == system
-	
-	# testar as condições
-	lx = size(X,1); lu = size(U,1)
-	xi = ones(lx); phi = ones(lu)
-	@test matrices["H"] * matrices["X"] ≈ matrices["X"] * (system.A + system.B * matrices["F"]) atol=0.1
-	@test matrices["M"] * matrices["X"] ≈ matrices["U"] * matrices["F"] atol=0.1
-	@test all(matrices["H"] * xi .<= xi * matrices["lambda"])
-	@test all(matrices["M"] * xi .<= phi)
+    @test constraint_by_name(model, "contractiave_pi0") != nothing
+    @test constraint_by_name(model, "contractiave_pi1") != nothing
+    @test constraint_by_name(model, "u_included0") != nothing
+    @test constraint_by_name(model, "u_included1") != nothing
 
-	# TODO add a test for a not invariant by SSF polyhedron
-    end
+end
 
-    @testset "SOF" begin
+@testset "constraints added is_pinvariant SystemDelayed" begin
 
-        # X não é invariante por realimentação de saída
-	system = SLIT(A, B, C, SOF)
-    	@test_throws "Poliedro não é invariante" is_pinvariant(system, U, X)
-    end
-    end
+  A = [1.2 0.2; -0.4 0.6]
+  Ad = [-0.3 -0.2; 0.4 0.2]
+  C = [1 1]
+  system = SystemDelayed(A, Ad, C, 1, SSF)
 
-    @testset "SystemDelayed" begin
-    # Com Delay
-    A = [1.2 0.2; -0.4 0.6]
-    Ad = [-0.3 -0.2; 0.4 0.3]
+  X = [-1 -1; 2 1]
+  X = vcat(X, -X)
 
-    X = [-1 -1; 2 1]
+  model = is_pinvariant(system, X; return_model=true)
 
-    # TODO testes com delay
-    #@test is_pinvariant(SystemDelayed(A, Ad, 1), X, symetric=true)["lambda"] < 1
-    #@test is_pinvariant(SystemDelayed(A, Ad, 10), X, symetric=true)["lambda"] < 1
+  @test constraint_by_name(model, "contractiave_pi_H") != nothing
+  @test constraint_by_name(model, "contractiave_pi_L") != nothing
+  @test constraint_by_name(model, "contractiave_pi_M") != nothing
+  @test constraint_by_name(model, "contractiave_pi_N") != nothing
+  @test constraint_by_name(model, "contractiave_pi") != nothing
 
-    #@test_throws "Poliedro não é invariante" @test is_pinvariant(SystemDelayed(A, Ad, 11), X, symetric=true)["lambda"] < 1
-    end
+end
+
+@testset "constraints added is_pinvariant LTIDisturbanceDelayedInput" begin
+
+  A = [1.2 0.2; -0.4 0.6]
+  B = [1.0; 0.5;;]
+  E = [0.1 0.0; 0.0 0.1]
+  C = [1 1]
+  system = LTIDisturbanceDelayedInput(A, B, E, C, 1, SSF)
+
+  X = [-1 -1; 2 1]
+  X = vcat(X, -X)
+
+  # find=false requires size(D, 1) == size(X, 1) for the current
+  # `contractiave_pi` formulation
+  D = [1.0 0.0; -1.0 0.0; 0.0 1.0; 0.0 -1.0]
+
+  model = is_pinvariant(system, X, D; return_model=true)
+
+  @test constraint_by_name(model, "contractiave_pi_H") != nothing
+  @test constraint_by_name(model, "contractiave_pi_L") != nothing
+  @test constraint_by_name(model, "contractiave_pi_M") != nothing
+  @test constraint_by_name(model, "contractiave_pi_N") != nothing
+  @test constraint_by_name(model, "contractiave_pi_P") != nothing
+  @test constraint_by_name(model, "contractiave_pi_Q") != nothing
+  @test constraint_by_name(model, "contractiave_pi")   != nothing
+
 end

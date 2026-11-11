@@ -29,26 +29,20 @@ sys = SystemDelayed(A, Ad, C, 1, SSF)
 # ╔═╡ ba0062eb-7f96-48e8-a396-90faaf9a412b
 sys_d10 = SystemDelayed(A, Ad, C, 10, SSF)
 
-# ╔═╡ e46f047f-f5f0-48c1-baa3-83aff72c9738
-ip = pinvariant_poly(sys, [-1 -1; 2 1; 1 1; -2 -1], enl=state_constraint_enl!)
+# ╔═╡ 39f68b78-3f30-4409-a123-227fc95ec4f2
+ip = is_pinvariant(sys_d10, [-1 -1; 2 1; 1 1; -2 -1])
 
-# ╔═╡ 34156e26-460f-40c2-b8ee-349c6c361fa8
+# ╔═╡ 676bb0ad-b84a-4529-be45-46f55510c46a
 plot_poly(ip)
 
-# ╔═╡ fd9c2ad1-09f8-4487-80e6-c5ad319bd167
-ip_2 = pinvariant_poly(sys, [-1 -1; 2 1; 1 1; -2 -1], t=4, F_init=ip.F)
+# ╔═╡ f9942902-8d9f-420d-8d6d-d02d12cf3e11
+traj = trajectory(sys_d10, [2 0 0 0 0 0 0 0 0 0 0; -3 1 1 1 1 1 1 1 1 1 1], 100)
 
-# ╔═╡ 1cf268c5-b83b-4d6c-86b0-26a0e50b0128
-plot_poly(ip_2)
+# ╔═╡ 78a1ed77-c42a-4c8e-9bcd-91087da0d4cb
+plot_trajectory(ip, traj)
 
-# ╔═╡ 39f68b78-3f30-4409-a123-227fc95ec4f2
-is_pinvariant(sys_d10, [-1 -1; 2 1; 1 1; -2 -1])
-
-# ╔═╡ 36ef58cd-7bba-4482-af9e-2eac8fb87d76
-ip_init_cond = pinvariant_poly(sys, [-1 -1; 2 1; 1 1; -2 -1], t=4, F_init=ip_2.F)
-
-# ╔═╡ c34c0124-b5c7-4e6d-8a2f-3336a21bb022
-plot_poly(ip_init_cond)
+# ╔═╡ 031f360c-761e-427b-b31a-38491c36cd69
+plot_trajectory(ip, trajectory(sys, [0 0;1 1], 100))
 
 # ╔═╡ 0fae5baf-ec1a-4d18-aec2-2536d46fae9a
 begin
@@ -70,7 +64,7 @@ sys_t = SLIT(A_t, B_t, C_t, SSF)
 ip_t = pinvariant_poly(sys_t, X, enl=state_constraint_enl!)
 
 # ╔═╡ a0df670c-5877-4d0f-a10a-0bbf88f3517b
-plot_poly(pinvariant_poly(sys_t, X, enl=state_constraint_enl!, F_init=ip_t.F))
+plot_poly(pinvariant_poly(sys_t, X, F_init=ip_t.F))
 
 # ╔═╡ bfe6553f-c5d6-4a0a-8c94-c00715a86491
 sys_t_d = SystemDelayed(A_t, B_t, C_t, 1, SSF)
@@ -92,13 +86,11 @@ plot_poly(X, ones(4))
 # ╠═9449376a-daff-4bab-bcaa-fccdb3f4fa05
 # ╠═1f96048b-4eb1-40f0-93f7-8d6b0aa348fd
 # ╠═ba0062eb-7f96-48e8-a396-90faaf9a412b
-# ╠═e46f047f-f5f0-48c1-baa3-83aff72c9738
-# ╠═34156e26-460f-40c2-b8ee-349c6c361fa8
-# ╠═fd9c2ad1-09f8-4487-80e6-c5ad319bd167
-# ╠═1cf268c5-b83b-4d6c-86b0-26a0e50b0128
 # ╠═39f68b78-3f30-4409-a123-227fc95ec4f2
-# ╠═36ef58cd-7bba-4482-af9e-2eac8fb87d76
-# ╠═c34c0124-b5c7-4e6d-8a2f-3336a21bb022
+# ╠═676bb0ad-b84a-4529-be45-46f55510c46a
+# ╠═f9942902-8d9f-420d-8d6d-d02d12cf3e11
+# ╠═78a1ed77-c42a-4c8e-9bcd-91087da0d4cb
+# ╠═031f360c-761e-427b-b31a-38491c36cd69
 # ╠═0fae5baf-ec1a-4d18-aec2-2536d46fae9a
 # ╠═8bf6ff87-d489-4c1a-beec-ab03c023c6c6
 # ╠═2944508a-299e-4650-aefd-6ab08773fecf

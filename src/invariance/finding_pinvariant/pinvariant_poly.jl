@@ -45,12 +45,16 @@ function pinvariant_poly(system::SLIT, X::Matrix; kwargs...)
   if F_init !== nothing
     size(F_init) == (lf, n) ||
       throw(DimensionMismatch("F_init must be $(lf)×$(n), got $(size(F_init))"))
-    set_start_value.(F, F_init)
+    set_start_value.(F, F_init) # solução inicial
+    set_optimizer_attribute(model, "ms_enable", 0) # desativando multistart
+
+    @assert all(has_start_value, F)
+
   end
   @variable(model, 0.001 <= lambda <= 1)
 
   # Problem constraints
-  invariance_constraints!(model, system; find=true, X=X)
+  invariance_constraints!(model, system, X; find=true)
   state_constraints!(model, system, X)
 
   if U !== nothing
@@ -112,12 +116,16 @@ function pinvariant_poly(system::SystemDelayed, X::Matrix; kwargs...)
   if F_init !== nothing
     size(F_init) == (lf, n) ||
       throw(DimensionMismatch("F_init must be $(lf)×$(n), got $(size(F_init))"))
-    set_start_value.(F, F_init)
+    set_start_value.(F, F_init) # solução inicial
+    set_optimizer_attribute(model, "ms_enable", 0) # desativando multistart
+
+    @assert all(has_start_value, F)
+
   end
   @variable(model, 0.001 <= lambda <= 1)
 
   # Problem constraints
-  invariance_constraints!(model, system, X=X)
+  invariance_constraints!(model, system, X)
   state_constraints!(model, system, X)
 
   if U !== nothing
@@ -174,12 +182,16 @@ function pinvariant_poly(system::LTIDisturbanceDelayedInput, X::Matrix, D::Matri
   if F_init !== nothing
     size(F_init) == (lf, n) ||
       throw(DimensionMismatch("F_init must be $(lf)×$(n), got $(size(F_init))"))
-    set_start_value.(F, F_init)
+    set_start_value.(F, F_init) # solução inicial
+    set_optimizer_attribute(model, "ms_enable", 0) # desativando multistart
+
+    @assert all(has_start_value, F)
+    
   end
   @variable(model, 0.001 <= lambda <= 1)
 
   # Problem constraints
-  invariance_constraints!(model, system, X=X, D=D)
+  invariance_constraints!(model, system, X, D)
   state_constraints!(model, system, X)
 
   if U !== nothing
